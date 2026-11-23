@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.code2knowledge.identity.mapper.IdentityMapper">
+    <!-- 登录名在部署内唯一；响应层不得使用该DO。 -->
+    <select id="findByUsername" resultType="com.code2knowledge.identity.domain.entity.AccountDO">
+        SELECT id, tenant_id, username, display_name, password_hash, role, enabled, auth_version
+        FROM c2k_account
+        WHERE username = #{username}
+    </select>
+
+    <!-- 每次请求重读，禁用成员对已有会话立即生效。 -->
+    <select id="findById" resultType="com.code2knowledge.identity.domain.entity.AccountDO">
+        SELECT id, tenant_id, username, display_name, password_hash, role, enabled, auth_version
+        FROM c2k_account
+        WHERE id = #{id}
+    </select>
+
+    <!-- 仅按可信身份所指向的企业查询。 -->
+    <select id="findTenant" resultType="com.code2knowledge.identity.domain.entity.TenantDO">
+        SELECT id, name FROM c2k_tenant WHERE id = #{id}
+    </select>
+
+    <!-- 引导时使用，数据库事务与唯一约束共同防止重复引导。 -->
+    <select id="countTenants" resultType="int">
+        SELECT count(*) FROM c2k_tenant
+    </select>
+
+    <!-- 引导只创建固定企业标识，两个启动进程不能建立两个初始企业。 -->
+    <insert id="insertTenant">
+        INSERT INTO c2k_tenant (id, name) VALUES (#{tenant.id}, #{tenant.name})
+    </insert>
+
+    <!-- 账户摘要已在服务层使用自适应哈希，不保存明文。 -->
+    <insert id="insertAccount">
+        INSERT INTO c2k_account (id, tenant_id, username, display_name, password_hash, role, enabled)
+        VALUES (#{account.id}, #{account.tenantId}, #{account.username}, #{account.displayName}, #{account.passwordHash}, #{account.role}, #{account.enabled})
+    </insert>
+
+    <!-- 成员管理不返回密码摘要。 -->
+    <select id="listMembers" resultType="com.code2knowledge.identity.domain.vo.MemberVO">
+        SELECT id, username, display_name, role, enabled
+        FROM c2k_account
+        WHERE tenant_id = #{tenantId}
+        ORDER BY username
+    </select>
+
+    <!-- 不允许经普通成员接口禁用管理员，避免本轮引导账户被锁死。 -->
+    <update id="setEnabled">
+        UPDATE c2k_account SET enabled = #{enabled}, auth_version = auth_version + 1
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND role = 'MEMBER'
+    </update>
+
+    <!-- 审计只记录身份与目标标识，禁止密码及知识正文进入事件。 -->
+    <insert id="audit">
+        INSERT INTO c2k_audit (tenant_id, actor_id, event, target_id)
+        VALUES (#{tenantId}, #{actorId}, #{event}, #{targetId})
+    </insert>
+
+    <!-- 目录授权审计同时记录操作人、资源和被授权主体，便于重建授权变化。 -->
+    <insert id="auditPermission">
+        INSERT INTO c2k_audit (tenant_id, actor_id, event, target_id, subject_id)
+        VALUES (#{tenantId}, #{actorId}, #{event}, #{systemId}, #{memberId})
+    </insert>
+
+    <!-- 设备事务先锁所有者，保证与成员启停串行并维持统一账户→设备锁顺序。 -->
+    <select id="lockById" resultType="com.code2knowledge.identity.domain.entity.AccountDO">
+        SELECT id, tenant_id, username, display_name, password_hash, role, enabled, auth_version
+        FROM c2k_account WHERE id = #{id} FOR UPDATE
+    </select>
+</mapper>

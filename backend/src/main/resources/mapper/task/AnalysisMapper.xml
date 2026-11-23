@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.code2knowledge.task.mapper.AnalysisMapper">
+    <!-- 权限由服务在使用前核对，定义不能从HTTP任意读取。 -->
+    <select id="spec" resultType="com.code2knowledge.task.domain.entity.AnalysisSpecDO">
+        SELECT task_id, product, domain_name AS domain, scope, documents_choice
+        FROM c2k_analysis_spec WHERE task_id = #{id}
+    </select>
+
+    <!-- 与任务和全部来源原子创建。 -->
+    <insert id="insert">
+        INSERT INTO c2k_analysis_spec (task_id, product, domain_name, scope, documents_choice)
+        VALUES (#{spec.taskId}, #{spec.product}, #{spec.domain}, #{spec.scope}, #{spec.documentsChoice})
+    </insert>
+
+    <!-- 仅来源引用、版本及明确分支，不保存本机路径。 -->
+    <insert id="source">
+        INSERT INTO c2k_task_source (task_id, source_id, source_revision, alias, kind, branch, locator)
+        VALUES (#{id}, #{source.sourceId}, #{source.revision}, #{source.alias}, #{source.kind}, #{source.branch}, #{source.locator})
+    </insert>
+
+    <!-- 顺序稳定用于契约、幂等及重试，当前授权另外重查。 -->
+    <select id="sources" resultType="com.code2knowledge.task.domain.vo.AnalysisSourceVO">
+        SELECT source_id, source_revision AS revision, alias, kind, branch, locator
+        FROM c2k_task_source WHERE task_id = #{id}
+        ORDER BY alias
+    </select>
+
+    <!-- 每尝试至多一个候选，由数据库唯一约束保证。 -->
+    <select id="candidate" resultType="String">
+        SELECT id FROM c2k_candidate WHERE attempt_id = #{id}
+    </select>
+</mapper>

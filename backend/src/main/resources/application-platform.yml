@@ -1,0 +1,45 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+  datasource:
+    url: ${C2K_DATABASE_URL:jdbc:postgresql://127.0.0.1:16432/code2knowledge}
+    username: ${C2K_DATABASE_USER:code2knowledge}
+    password: ${C2K_DATABASE_PASSWORD}
+    hikari:
+      maximum-pool-size: 5
+  servlet:
+    multipart:
+      max-file-size: 8MB
+      max-request-size: 9MB
+  flyway:
+    enabled: true
+mybatis:
+  mapper-locations: classpath:mapper/*/*Mapper.xml
+  configuration:
+    # 身份在等待锁后必须重新查库，禁止事务一级缓存复活已失效会话。
+    local-cache-scope: STATEMENT
+    map-underscore-to-camel-case: true
+    arg-name-based-constructor-auto-mapping: true
+server:
+  servlet:
+    session:
+      timeout: 30m
+      cookie:
+        http-only: true
+        same-site: strict
+        secure: ${C2K_COOKIE_SECURE:false}
+  tomcat:
+    max-http-form-post-size: 8KB
+
+c2k:
+  candidate:
+    storage: ${C2K_CANDIDATE_STORAGE:local}
+    s3-endpoint: ${C2K_S3_ENDPOINT:}
+    s3-region: ${C2K_S3_REGION:us-east-1}
+    s3-bucket: ${C2K_S3_BUCKET:}
+    s3-access-key: ${C2K_S3_ACCESS_KEY:}
+    s3-secret-key: ${C2K_S3_SECRET_KEY:}
+    node: ${C2K_CANDIDATE_NODE:node}
+    validator: ${C2K_CANDIDATE_VALIDATOR:apps/runtime/dist/skill-inspect.js}
+    objects: ${C2K_CANDIDATE_OBJECTS:.local/candidate-objects}

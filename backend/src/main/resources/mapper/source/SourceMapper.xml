@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.code2knowledge.source.mapper.SourceMapper">
+    <!-- 分析范围只取当前主体、当前来源配置版本；没有任何系统目录ACL继承。 -->
+    <sql id="eligible">
+        s.enabled AND (EXISTS (
+            SELECT 1 FROM c2k_source_grant g
+            WHERE g.tenant_id = s.tenant_id AND g.source_id = s.id
+              AND g.member_id = #{userId} AND g.source_revision = s.revision
+        ) OR EXISTS (
+            <include refid="com.code2knowledge.organization.mapper.OrganizationMapper.departmentScope"><property name="kind" value="'SOURCE'"/><property name="version" value="s.revision"/><property name="tenantParameter" value="tenantId"/><property name="memberExpression" value="#{userId}"/></include>
+        ))
+    </sql>
+
+    <!-- 元数据管理可见与分析资格分开，管理员默认can_analyze=false；先授权再分页。 -->
+    <select id="list" resultType="com.code2knowledge.source.domain.vo.SourceVO">
+        SELECT s.id, s.name, s.kind, s.locator, s.branch, s.enabled, s.revision,
+               (#{analyze} AND (<include refid="eligible"/>)) AS can_analyze
+        FROM c2k_source s
+        WHERE s.tenant_id = #{tenantId}
+          AND (#{manage} OR (<include refid="eligible"/>))
+          AND POSITION(LOWER(#{keyword}) IN LOWER(s.name)) > 0
+        ORDER BY s.name, s.id
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <!-- 计数与列表使用相同过滤，不包含未获授权来源或其他企业数量。 -->
+    <select id="count" resultType="int">
+        SELECT count(*) FROM c2k_source s
+        WHERE s.tenant_id = #{tenantId}
+          AND (#{manage} OR (<include refid="eligible"/>))
+          AND POSITION(LOWER(#{keyword}) IN LOWER(s.name)) > 0
+    </select>
+
+    <!-- 详情沿用同一动作与范围判定；不返回关联系统防止借来源猜测隐藏系统ID。 -->
+    <select id="visible" resultType="com.code2knowledge.source.domain.vo.SourceVO">
+        SELECT s.id, s.name, s.kind, s.locator, s.branch, s.enabled, s.revision,
+               (#{analyze} AND (<include refid="eligible"/>)) AS can_analyze
+        FROM c2k_source s
+        WHERE s.tenant_id = #{tenantId} AND s.id = #{id}
+          AND (#{manage} OR (<include refid="eligible"/>))
+    </select>
+
+    <!-- 仅管理服务调用；跨企业与不存在均null。 -->
+    <select id="owned" resultType="com.code2knowledge.source.domain.entity.SourceDO">
+        SELECT id, tenant_id, name, kind, locator, branch, enabled, revision
+        FROM c2k_source WHERE tenant_id = #{tenantId} AND id = #{id}
+    </select>
+
+    <!-- 唯一定位冲突返回409，不自动合并来源身份或授权。 -->
+    <insert id="insert">
+        INSERT INTO c2k_source (id, tenant_id, name, kind, locator, branch, enabled)
+        VALUES (#{source.id}, #{source.tenantId}, #{source.name}, #{source.kind}, #{source.locator}, #{source.branch}, #{source.enabled})
+    </insert>
+
+    <!-- 任何有效配置变化增加版本；旧授权保留历史记录但不再匹配eligible。 -->
+    <update id="update">
+        UPDATE c2k_source
+        SET name = #{source.name}, locator = #{source.locator}, branch = #{source.branch}, enabled = #{source.enabled}, revision = revision + 1
+        WHERE tenant_id = #{source.tenantId} AND id = #{source.id} AND revision = #{source.revision} AND kind = #{source.kind}
+    </update>
+
+    <!-- 管理专用绑定摘要，SQL复合企业连接，不用于普通成员读取。 -->
+    <select id="bindings" resultType="com.code2knowledge.catalog.domain.vo.SystemVO">
+        SELECT s.id, s.name, s.description FROM c2k_source_system b
+        JOIN c2k_system s ON s.tenant_id = b.tenant_id AND s.id = b.system_id
+        WHERE b.tenant_id = #{tenantId} AND b.source_id = #{id}
+        ORDER BY s.name, s.id
+    </select>
+
+    <!-- 仅与版本化来源更新同事务替换，不删除来源或成员授权。 -->
+    <delete id="clearBindings">
+        DELETE FROM c2k_source_system WHERE tenant_id = #{tenantId} AND source_id = #{id}
+    </delete>
+
+    <!-- 复合外键阻止跨企业关联；关联不授予任何隐式来源权。 -->
+    <insert id="bind">
+        INSERT INTO c2k_source_system (tenant_id, source_id, system_id) VALUES (#{tenantId}, #{id}, #{systemId})
+    </insert>
+
+    <!-- 保留旧版本授权用于管理者识别“需重新授权”，不读取凭证或密码。 -->
+    <select id="grants" resultType="com.code2knowledge.source.domain.vo.SourceGrantVO">
+        SELECT a.id AS member_id, a.display_name, g.source_revision,
+               (s.enabled AND g.source_revision = s.revision) AS current
+        FROM c2k_source_grant g
+        JOIN c2k_source s ON s.tenant_id = g.tenant_id AND s.id = g.source_id
+        JOIN c2k_account a ON a.tenant_id = g.tenant_id AND a.id = g.member_id
+        WHERE g.tenant_id = #{tenantId} AND g.source_id = #{id}
+        ORDER BY a.username
+    </select>
+
+    <!-- 相同版本重复授权不产生更新，审计只对真正变化写一次。 -->
+    <insert id="grant">
+        INSERT INTO c2k_source_grant (tenant_id, source_id, member_id, source_revision)
+        VALUES (#{tenantId}, #{id}, #{memberId}, #{revision})
+        ON CONFLICT (tenant_id, source_id, member_id) DO UPDATE
+        SET source_revision = EXCLUDED.source_revision
+        WHERE c2k_source_grant.source_revision != EXCLUDED.source_revision
+    </insert>
+
+    <!-- 幂等撤销含失效授权，下次检查直接读当前数据库，不靠缓存。 -->
+    <delete id="revoke">
+        DELETE FROM c2k_source_grant
+        WHERE tenant_id = #{tenantId} AND source_id = #{id} AND member_id = #{memberId}
+    </delete>
+</mapper>

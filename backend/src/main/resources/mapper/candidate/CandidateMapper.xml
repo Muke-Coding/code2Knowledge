@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.code2knowledge.candidate.mapper.CandidateMapper">
+    <!-- 每个来源均须启用、版本一致且当前本人有逐项授权，不以管理员元数据动作绕过。 -->
+    <sql id="eligible">
+        NOT EXISTS (
+            SELECT 1 FROM c2k_candidate_source cs
+            LEFT JOIN c2k_source s ON s.tenant_id = cs.tenant_id AND s.id = cs.source_id
+            WHERE cs.candidate_id = c.id
+              AND (s.id IS NULL OR NOT s.enabled OR s.revision != cs.source_revision OR NOT (EXISTS (
+                  SELECT 1 FROM c2k_source_grant g
+                  WHERE g.tenant_id = cs.tenant_id AND g.source_id = cs.source_id
+                    AND g.member_id = #{owner} AND g.source_revision = cs.source_revision
+              ) OR EXISTS (<include refid="com.code2knowledge.organization.mapper.OrganizationMapper.departmentScope"><property name="kind" value="'SOURCE'"/><property name="version" value="s.revision"/><property name="tenantParameter" value="tenant"/><property name="memberExpression" value="#{owner}"/></include>)))
+        )
+    </sql>
+
+    <!-- 对象读取先限定本人，服务再次检查当前全部来源。 -->
+    <select id="get" resultType="com.code2knowledge.candidate.domain.entity.CandidateDO">
+        SELECT * FROM c2k_candidate c
+        WHERE c.tenant_id = #{tenant} AND c.owner_id = #{owner} AND c.id = #{id}
+    </select>
+
+    <!-- 重复请求只允许比较原始包与来源后返回，不创建第二版本。 -->
+    <select id="request" resultType="com.code2knowledge.candidate.domain.entity.CandidateDO">
+        SELECT * FROM c2k_candidate c
+        WHERE c.tenant_id = #{tenant} AND c.owner_id = #{owner} AND c.request_id = #{request}
+    </select>
+
+    <!-- 授权过滤在分页前执行，不泄露不可读候选计数。 -->
+    <select id="list" resultType="com.code2knowledge.candidate.domain.entity.CandidateDO">
+        SELECT c.* FROM c2k_candidate c
+        WHERE c.tenant_id = #{tenant} AND c.owner_id = #{owner} AND <include refid="eligible" />
+        ORDER BY c.created_at DESC, c.id
+        LIMIT 20 OFFSET #{offset}
+    </select>
+
+    <!-- 计数与列表同授权谓词。 -->
+    <select id="count" resultType="int">
+        SELECT count(*) FROM c2k_candidate c
+        WHERE c.tenant_id = #{tenant} AND c.owner_id = #{owner} AND <include refid="eligible" />
+    </select>
+
+    <!-- 不可变写入，幂等唯一约束兜底。 -->
+    <insert id="insert">
+        INSERT INTO c2k_candidate (id, tenant_id, owner_id, device_id, request_id, digest, archive_sha256, archive_bytes, report, mode, task_id, attempt_id)
+        VALUES (#{value.id}, #{value.tenantId}, #{value.ownerId}, #{value.deviceId}, #{value.requestId}, #{value.digest}, #{value.archiveSha256}, #{value.archiveBytes}, #{value.report}, #{value.mode}, #{value.taskId}, #{value.attemptId})
+    </insert>
+
+    <!-- 声明来源与包内名称/commit一一对应，和候选同事务。 -->
+    <insert id="source">
+        INSERT INTO c2k_candidate_source (candidate_id, tenant_id, source_id, source_revision, repository, commit_id, kind, path)
+        VALUES (#{id}, #{tenant}, #{source.sourceId}, #{source.revision}, #{source.repository}, #{source.commit}, #{source.kind}, #{source.path})
+    </insert>
+
+    <!-- 读取不可变来源版本，不从目录补猜历史。 -->
+    <select id="sources" resultType="com.code2knowledge.candidate.domain.dto.CandidateSourceDTO">
+        SELECT source_id, source_revision AS revision, repository, commit_id AS commit, kind, path
+        FROM c2k_candidate_source WHERE candidate_id = #{id}
+        ORDER BY repository
+    </select>
+</mapper>

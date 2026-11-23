@@ -1,0 +1,50 @@
+/** 企业组织与受控导航的浏览器验收；只用合成部门和当前隔离数据库，不读取模型或源码。 */
+import { test, expect, type Page } from '@playwright/test';
+import { submitLogin } from '../platform-login.js';
+import { parsePlatform } from '@c2k/contracts';
+test.use({ actionTimeout: 10000 });
+/** @param page 隔离页面 @returns 真实管理员登录，不输出会话秘密 */
+async function login(page: Page): Promise<void> { await page.goto('/'); await page.getByLabel('登录名', { exact: true }).fill('admin'); await page.getByLabel('密码', { exact: true }).fill('Test-Only-Password-2026'); await submitLogin(page); await expect(page.getByRole('navigation', { name: '主导航' })).toBeVisible(); }
+/** @param page 已登录页面 @param title 系统设置下的固定入口 @returns 展开原生Menu并进入目标 */
+async function settings(page: Page, title: string): Promise<void> { const menu = page.getByRole('navigation', { name: '主导航' }); const parent = menu.locator('.ant-menu-submenu-title'); if (await parent.getAttribute('aria-expanded') === 'false') await parent.click(); await menu.getByRole('link', { name: title, exact: true }).click(); await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible(); }
+/** @param page 合成页面 @param name 截图标识 @returns 验证无页面水平溢出并保存截图 */
+async function capture(page: Page, name: string): Promise<void> { expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await page.screenshot({ path: `test-results/platform/${name}.png`, fullPage: true, animations: 'disabled' }); }
+test('部门创建、修改保护、停用、成员归属、菜单隐藏与原路径兼容', async ({ page }) => {
+  test.setTimeout(90000); await login(page); await settings(page, '部门管理');
+  await page.getByRole('button', { name: '新增部门', exact: true }).click(); await page.getByLabel('部门名称', { exact: true }).fill('平台验收部门'); await page.getByRole('button', { name: '保存部门', exact: true }).click(); await expect(page.getByRole('dialog', { name: '新增部门', exact: true })).not.toBeVisible();
+  const row = page.getByRole('row').filter({ hasText: '平台验收部门' }); await expect(row).toBeVisible(); await row.getByRole('button', { name: '编辑', exact: true }).click(); await page.getByLabel('部门名称', { exact: true }).fill('未保存修改'); await page.getByRole('button', { name: '取消', exact: true }).click(); await page.getByRole('button', { name: '继续编辑', exact: true }).click(); await expect(page.getByRole('dialog', { name: '放弃部门修改？', exact: true })).not.toBeVisible(); await expect(page.getByLabel('部门名称', { exact: true })).toHaveValue('未保存修改'); await page.keyboard.press('Escape'); await page.getByRole('button', { name: '放弃', exact: true }).click(); await expect(row).toBeVisible();
+  await row.getByRole('button', { name: '编辑', exact: true }).click(); await page.getByRole('switch', { name: '启用', exact: true }).click(); await page.getByRole('button', { name: '保存部门', exact: true }).click(); await expect(row).toContainText('停用');
+  for (const width of [380, 900, 1440]) { await page.setViewportSize({ width, height: width === 380 ? 620 : 900 }); await capture(page, `departments-${width}`); }
+  await row.getByRole('button', { name: '编辑', exact: true }).click(); await page.getByRole('switch', { name: '启用', exact: true }).click(); await page.getByRole('button', { name: '保存部门', exact: true }).click(); await expect(row).toContainText('启用');
+  await page.getByRole('button', { name: '成员归属', exact: true }).click(); await page.getByRole('combobox', { name: '选择归属成员', exact: true }).click(); await page.getByText('管理员 (admin)', { exact: true }).last().click(); await expect(page.getByRole('combobox', { name: '成员主部门', exact: true })).toBeEnabled(); await page.getByRole('combobox', { name: '成员主部门', exact: true }).focus(); await page.keyboard.press('ArrowDown'); await page.getByText('平台验收部门', { exact: true }).last().click(); await page.getByRole('button', { name: '保存归属', exact: true }).click(); await expect(page.getByRole('dialog', { name: '成员归属' })).not.toBeVisible();
+  await settings(page, '菜单管理'); const sourceRow = page.getByRole('row').filter({ hasText: '/sources' }); await sourceRow.getByRole('button', { name: '配置', exact: true }).click(); await page.getByRole('switch', { name: '导航显示', exact: true }).click(); await page.getByRole('button', { name: '保存配置', exact: true }).click(); await expect(page.getByRole('dialog', { name: '配置菜单' })).not.toBeVisible(); await expect(sourceRow).toContainText('隐藏');
+  await page.goto('/sources'); await expect(page.getByRole('heading', { name: '来源管理', exact: true })).toBeVisible(); await expect(page.getByRole('tab', { name: '来源管理', exact: true })).toHaveCount(0); expect((await page.request.get('/api/v1/sources')).status()).toBe(200);
+  await settings(page, '菜单管理'); await sourceRow.getByRole('button', { name: '配置', exact: true }).click(); await page.getByRole('switch', { name: '导航显示', exact: true }).click(); await page.getByRole('button', { name: '保存配置', exact: true }).click(); await expect(sourceRow).toContainText('显示');
+  for (const width of [380, 900, 1440]) { await page.setViewportSize({ width, height: width === 380 ? 620 : 900 }); await capture(page, `menus-${width}`); }
+  await page.getByRole('button', { name: '收起侧栏', exact: true }).click(); await expect(page.locator('.workspace')).toHaveClass(/workspace-collapsed/); await capture(page, 'shell-collapsed-1440'); await page.getByRole('button', { name: '展开侧栏', exact: true }).click();
+  const session = parsePlatform('Session', await (await page.request.get('/api/v1/auth/session')).json()); expect(session.permissions).toContain('department.assign');
+});
+/** @param page 已登录管理员 @param path 同源写路径 @param data 显式合成配置 @param status 预期HTTP状态 @returns 非204返回JSON，204无值 */
+async function write(page: Page, path: string, data: object, status = 201): Promise<unknown> { const csrf = parsePlatform('Csrf', await (await page.request.get('/api/v1/auth/csrf')).json()); const response = await page.request.fetch(path, { method: path.includes('department-grants') ? 'PUT' : 'POST', headers: { [csrf.headerName]: csrf.token }, data }); expect(response.status()).toBe(status); return status === 204 ? null : response.json(); }
+test('来源部门授权表单显式下级选择、撤销墓碑及重新授权', async ({ page }) => {
+  await login(page); const department = parsePlatform('Department', await write(page, '/api/v1/departments', { parentId: '', name: '来源授权验收部门', sortOrder: 0, enabled: true, revision: 0 }));
+  const system = parsePlatform('CatalogSystem', await write(page, '/api/v1/systems', { name: '组织授权界面验收系统' }));
+  const source = parsePlatform('Source', await write(page, '/api/v1/sources', { name: '部门授权界面仓库', kind: 'REPOSITORY', locator: 'https://example.invalid/org.git', branch: 'main', enabled: true, systemIds: [system.id] }));
+  await page.goto('/sources'); await page.getByRole('searchbox', { name: '搜索来源', exact: true }).fill(source.name); await page.getByRole('searchbox', { name: '搜索来源', exact: true }).press('Enter'); await page.getByRole('row').filter({ hasText: source.name }).getByRole('button', { name: '分析授权', exact: true }).click();
+  await page.getByRole('combobox', { name: '选择授权部门', exact: true }).click(); await page.locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)').getByText(department.name, { exact: true }).click();
+  await expect(page.getByRole('checkbox', { name: '包含下级部门', exact: true })).not.toBeChecked(); await page.getByRole('checkbox', { name: '包含下级部门', exact: true }).check(); await page.getByRole('button', { name: '保存部门授权', exact: true }).click();
+  const row = page.getByRole('row').filter({ hasText: department.name }); await expect(row).toContainText('部门及下级'); await capture(page, 'department-source-grant-1440');
+  await row.getByRole('button', { name: '撤销', exact: true }).click(); await page.getByRole('tooltip').getByRole('button', { name: '撤销', exact: true }).click(); await expect(row).toContainText('已撤销');
+  // 行数据先更新，finally随后结束提交状态；等待真实按钮恢复，避免在加载图标改变可访问名称时抢先提交。
+  await expect(page.getByRole('dialog').locator('.ant-btn-loading')).toHaveCount(0);
+  await page.getByRole('combobox', { name: '选择授权部门', exact: true }).click(); await page.locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)').getByText(department.name, { exact: true }).click(); await page.getByRole('button', { name: '保存部门授权', exact: true }).click(); await expect(row).not.toContainText('已撤销');
+  const response = await page.request.get(`/api/v1/department-grants/SOURCE/${source.id}`); const grants: unknown = await response.json(); if (!Array.isArray(grants)) throw new Error('部门授权应为数组'); const grant = grants.map((value) => parsePlatform('DepartmentGrant', value))[0]!; expect(grant.active).toBe(true); expect(grant.revision).toBe(3);
+});
+test('页面移动到设备组仍可通过Tabs访问组内所有页面', async ({ page }) => {
+  await login(page); const response: unknown = await (await page.request.get('/api/v1/menus')).json(); if (!Array.isArray(response)) throw new Error('菜单应为数组'); const old = response.map((value) => parsePlatform('MenuSetting', value)).find((value) => value.path === '/sources')!;
+  const csrf = parsePlatform('Csrf', await (await page.request.get('/api/v1/auth/csrf')).json()); let changed = old;
+  try {
+    const saved = await page.request.put('/api/v1/menus/sources', { headers: { [csrf.headerName]: csrf.token }, data: { title: old.title, group: 'device', sortOrder: 0, visible: true, revision: old.revision } }); expect(saved.status()).toBe(200); changed = parsePlatform('MenuSetting', await saved.json());
+    await page.reload(); await page.getByRole('navigation', { name: '主导航' }).getByRole('link', { name: '设备管理', exact: true }).click(); await page.getByRole('tab', { name: '我的设备', exact: true }).click(); await expect(page.getByRole('heading', { name: '我的设备', exact: true })).toBeVisible(); await page.getByRole('tab', { name: '来源管理', exact: true }).click(); await expect(page.getByRole('heading', { name: '来源管理', exact: true })).toBeVisible();
+  } finally { const restored = await page.request.put('/api/v1/menus/sources', { headers: { [csrf.headerName]: csrf.token }, data: { title: old.title, group: old.group, sortOrder: old.sortOrder, visible: old.visible, revision: changed.revision } }); expect(restored.status()).toBe(200); }
+});

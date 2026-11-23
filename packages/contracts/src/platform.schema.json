@@ -1,0 +1,1806 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:c2k:platform:1",
+  "$defs": {
+    "Session": {
+      "description": "浏览器会话公开身份，不包含凭证，不代表知识阅读授权。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "username",
+        "displayName",
+        "tenantName",
+        "role",
+        "permissions",
+        "navigation"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "身份UUID，不为空。"
+        },
+        "username": {
+          "type": "string",
+          "description": "部署内唯一登录名，不为空。"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "显示名称，不为空。"
+        },
+        "tenantName": {
+          "type": "string",
+          "description": "企业名称，不为空。"
+        },
+        "role": {
+          "type": "string",
+          "description": "受保护基础身份，不用于判断当前管理动作；自定义角色动作见permissions。",
+          "enum": [
+            "ADMIN",
+            "MEMBER"
+          ]
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true,
+          "description": "当前动作集合，只为界面提示；服务端逐请求重查。"
+        },
+        "navigation": {
+          "type": "array",
+          "maxItems": 30,
+          "items": {
+            "$ref": "#/$defs/Navigation"
+          },
+          "description": "当前动作授权的页面目录；空数组表示无可用功能。"
+        }
+      }
+    },
+    "Member": {
+      "description": "企业成员管理视图，禁止返回密码摘要。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "username",
+        "displayName",
+        "role",
+        "enabled"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "成员UUID，不为空。"
+        },
+        "username": {
+          "type": "string",
+          "description": "登录名，不为空。"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "显示名称，不为空。"
+        },
+        "role": {
+          "type": "string",
+          "description": "受保护基础身份ADMIN或MEMBER，不代表全部附加角色。",
+          "enum": [
+            "ADMIN",
+            "MEMBER"
+          ]
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "启用状态，不为空。"
+        }
+      }
+    },
+    "CatalogSystem": {
+      "description": "目录元数据，catalog.read不代表来源或知识读取。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "description"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "系统UUID，不为空。"
+        },
+        "name": {
+          "type": "string",
+          "description": "系统名称，不为空。"
+        },
+        "description": {
+          "type": "string",
+          "description": "目录描述，允许空字符串。"
+        }
+      }
+    },
+    "Grant": {
+      "description": "单系统目录读取授权，不代表知识授权。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "memberId",
+        "displayName",
+        "action"
+      ],
+      "properties": {
+        "memberId": {
+          "type": "string",
+          "description": "普通成员UUID，不为空。"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "成员显示名，不为空。"
+        },
+        "action": {
+          "type": "string",
+          "description": "仅目录读取动作。",
+          "enum": [
+            "catalog.read"
+          ]
+        }
+      }
+    },
+    "Csrf": {
+      "description": "当前会话写保护令牌，不是访问令牌。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "headerName",
+        "token"
+      ],
+      "properties": {
+        "headerName": {
+          "type": "string",
+          "description": "写请求头名称，不为空。"
+        },
+        "token": {
+          "type": "string",
+          "description": "CSRF令牌，不记录日志。"
+        }
+      }
+    },
+    "ApiError": {
+      "description": "不含敏感正文的稳定HTTP错误。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "稳定错误码。"
+        },
+        "message": {
+          "type": "string",
+          "description": "中文恢复提示。"
+        }
+      }
+    },
+    "Device": {
+      "description": "所有者私有设备视图，不含凭证；仅接入健康不代表可执行任务。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "os",
+        "arch",
+        "version",
+        "status",
+        "lastSeen"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "设备UUID，不为空。"
+        },
+        "name": {
+          "type": "string",
+          "description": "所有者指定名称，不为空。"
+        },
+        "os": {
+          "type": "string",
+          "description": "自报操作系统，不作为信任证明。"
+        },
+        "arch": {
+          "type": "string",
+          "description": "自报CPU架构，不作为信任证明。"
+        },
+        "version": {
+          "type": "string",
+          "description": "运行时协议客户端版本，不为空。"
+        },
+        "status": {
+          "type": "string",
+          "description": "心跳派生状态，撤销或停用优先。",
+          "enum": [
+            "ONLINE",
+            "OFFLINE",
+            "REVOKED"
+          ]
+        },
+        "lastSeen": {
+          "type": "string",
+          "description": "最近心跳ISO时间；未发送心跳为空字符串。"
+        }
+      }
+    },
+    "Pairing": {
+      "description": "短时单次配对资料，仅创建时返回原码，禁止日志记录。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "code",
+        "expiresAt"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "配对会话UUID，不为空。"
+        },
+        "code": {
+          "type": "string",
+          "description": "256位随机配对码，仅用于标准输入，禁止放命令参数。"
+        },
+        "expiresAt": {
+          "type": "string",
+          "description": "配对有效期ISO时间，5分钟后拒绝。"
+        }
+      }
+    },
+    "DeviceCredential": {
+      "description": "配对兑换成功，仅设备本地持久化，禁止日志和浏览器展示。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "token",
+        "expiresAt"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "新设备UUID，不为空。"
+        },
+        "token": {
+          "type": "string",
+          "description": "设备专用256位凭证，仅授予心跳，不授予浏览器业务访问。"
+        },
+        "expiresAt": {
+          "type": "string",
+          "description": "设备凭证过期ISO时间，30天后需要重新配对。"
+        }
+      }
+    },
+    "Heartbeat": {
+      "description": "设备认证后心跳确认，服务端时钟为状态事实源。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "status",
+        "serverTime"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "当前设备UUID，不为空。"
+        },
+        "status": {
+          "type": "string",
+          "description": "当前设备状态。",
+          "enum": [
+            "ONLINE"
+          ]
+        },
+        "serverTime": {
+          "type": "string",
+          "description": "服务端ISO时间，不为空。"
+        }
+      }
+    },
+    "Permission": {
+      "description": "已实现动作目录，未知或未来动作不能配置。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "name",
+        "description"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "稳定动作码。"
+        },
+        "name": {
+          "type": "string",
+          "description": "动作名称。"
+        },
+        "description": {
+          "type": "string",
+          "description": "实际能力和边界。"
+        }
+      }
+    },
+    "Role": {
+      "description": "角色与动作，内置角色受保护，不自动获得内容读取权。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "description",
+        "builtIn",
+        "revision",
+        "permissions"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "角色ID。"
+        },
+        "name": {
+          "type": "string",
+          "description": "角色名称。"
+        },
+        "description": {
+          "type": "string",
+          "description": "职责说明，可空串。"
+        },
+        "builtIn": {
+          "type": "boolean",
+          "description": "只读基础角色标志。"
+        },
+        "revision": {
+          "type": "integer",
+          "description": "并发编辑版本，非负。",
+          "minimum": 0
+        },
+        "permissions": {
+          "type": "array",
+          "description": "显式动作数组，可为空。",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "MemberRoles": {
+      "description": "成员附加角色分配，基础身份不受此入口修改。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revision",
+        "roleIds"
+      ],
+      "properties": {
+        "revision": {
+          "type": "integer",
+          "description": "并发分配版本，非负。",
+          "minimum": 0
+        },
+        "roleIds": {
+          "type": "array",
+          "description": "同企业自定义角色数组，空表示无附加角色。",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "Source": {
+      "description": "来源公开元数据，不含正文；canAnalyze只代表当前资格，不证明远端或文件可访问。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "locator",
+        "branch",
+        "enabled",
+        "revision",
+        "canAnalyze"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "稳定来源UUID。"
+        },
+        "name": {
+          "type": "string",
+          "description": "来源名称。"
+        },
+        "kind": {
+          "type": "string",
+          "description": "仓库或资料类型。",
+          "enum": [
+            "REPOSITORY",
+            "DOCUMENT"
+          ]
+        },
+        "locator": {
+          "type": "string",
+          "description": "无凭证Git地址或运行时相对资料路径。"
+        },
+        "branch": {
+          "type": "string",
+          "description": "默认分析分支，资料为空字符串。"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "当前是否启用。"
+        },
+        "revision": {
+          "type": "integer",
+          "description": "配置版本，非负。",
+          "minimum": 0
+        },
+        "canAnalyze": {
+          "type": "boolean",
+          "description": "同时有动作和当前版本资源授权。"
+        }
+      }
+    },
+    "SourcePage": {
+      "description": "服务端授权过滤后分页，每页20项。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items",
+        "page",
+        "total"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "description": "当前页可见来源。",
+          "items": {
+            "$ref": "#/$defs/Source"
+          }
+        },
+        "page": {
+          "type": "integer",
+          "description": "页码，从1开始。",
+          "minimum": 1
+        },
+        "total": {
+          "type": "integer",
+          "description": "仅当前主体可见数量，非负。",
+          "minimum": 0
+        }
+      }
+    },
+    "SourceGrant": {
+      "description": "来源成员资源授权，不自动获得角色动作或设备使用权。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "memberId",
+        "displayName",
+        "sourceRevision",
+        "current"
+      ],
+      "properties": {
+        "memberId": {
+          "type": "string",
+          "description": "同企业成员UUID。"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "成员公开名称。"
+        },
+        "sourceRevision": {
+          "type": "integer",
+          "description": "授权对应的配置版本。",
+          "minimum": 0
+        },
+        "current": {
+          "type": "boolean",
+          "description": "来源启用且授权版本仍匹配。"
+        }
+      }
+    },
+    "SourceCheck": {
+      "description": "本次资格检查结果，不是可复用票据，不执行逆向。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceId",
+        "revision",
+        "allowed"
+      ],
+      "properties": {
+        "sourceId": {
+          "type": "string",
+          "description": "来源UUID。"
+        },
+        "revision": {
+          "type": "integer",
+          "description": "本次核对配置版本。",
+          "minimum": 0
+        },
+        "allowed": {
+          "type": "boolean",
+          "description": "本次检查通过。",
+          "const": true
+        }
+      }
+    },
+    "Task": {
+      "description": "私有来源预检及当前尝试，不代表逆向完成或业务发布。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "sourceId",
+        "sourceName",
+        "sourceRevision",
+        "branch",
+        "deviceId",
+        "deviceName",
+        "name",
+        "revision",
+        "attemptNumber",
+        "attemptId",
+        "state",
+        "commitId",
+        "archiveSha256",
+        "fileCount",
+        "archiveBytes",
+        "message",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "任务稳定UUID。"
+        },
+        "sourceId": {
+          "type": "string",
+          "description": "已授权仓库来源UUID。"
+        },
+        "sourceName": {
+          "type": "string",
+          "description": "创建时来源名称快照，不随目录改名。"
+        },
+        "sourceRevision": {
+          "type": "integer",
+          "description": "创建时来源配置版本，变化后拒绝执行。",
+          "minimum": 0
+        },
+        "branch": {
+          "type": "string",
+          "description": "明确选择的本地Git分支，不代表远端最新。"
+        },
+        "deviceId": {
+          "type": "string",
+          "description": "所有者私有设备UUID。"
+        },
+        "deviceName": {
+          "type": "string",
+          "description": "创建时设备名快照。"
+        },
+        "name": {
+          "type": "string",
+          "description": "预检任务名称，不含脚本。"
+        },
+        "revision": {
+          "type": "integer",
+          "description": "任务控制版本，用于并发取消或重试。",
+          "minimum": 0
+        },
+        "attemptNumber": {
+          "type": "integer",
+          "description": "当前尝试序号，从1开始。",
+          "minimum": 0
+        },
+        "attemptId": {
+          "type": "string",
+          "description": "当前执行尝试UUID。"
+        },
+        "state": {
+          "type": "string",
+          "description": "当前尝试状态：QUEUED/RUNNING/SUCCEEDED/FAILED/CANCELLED/EXPIRED。"
+        },
+        "commitId": {
+          "type": "string",
+          "description": "固定Git完整commit，未完成为空字符串。"
+        },
+        "archiveSha256": {
+          "type": "string",
+          "description": "本地隔离归档摘要，未完成为空字符串。"
+        },
+        "fileCount": {
+          "type": "integer",
+          "description": "已提交树中的条目数，未完成为0。",
+          "minimum": 0
+        },
+        "archiveBytes": {
+          "type": "integer",
+          "description": "本地隔离归档字节数，未完成为0。",
+          "minimum": 0
+        },
+        "message": {
+          "type": "string",
+          "description": "固定可公开状态说明，不接受任意设备日志。"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "任务UTC创建时间。"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "本次尝试UTC更新时间。"
+        }
+      }
+    },
+    "TaskPage": {
+      "description": "本人任务分页，不含隐藏数量。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items",
+        "page",
+        "total"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "description": "当前页任务。",
+          "items": {
+            "$ref": "#/$defs/Task"
+          }
+        },
+        "page": {
+          "type": "integer",
+          "description": "从1开始页码。",
+          "minimum": 0
+        },
+        "total": {
+          "type": "integer",
+          "description": "当前成员任务数量。",
+          "minimum": 0
+        }
+      }
+    },
+    "TaskLease": {
+      "description": "设备当前领取租约，不进入浏览器或日志。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "available",
+        "taskId",
+        "attemptId",
+        "leaseId",
+        "fence",
+        "sourceId",
+        "sourceRevision",
+        "branch"
+      ],
+      "properties": {
+        "available": {
+          "type": "boolean",
+          "description": "是否领取到任务；false时其余文本为空、fence和sourceRevision为0。"
+        },
+        "taskId": {
+          "type": "string",
+          "description": "任务UUID，无任务为空。"
+        },
+        "attemptId": {
+          "type": "string",
+          "description": "本次尝试UUID，无任务为空。"
+        },
+        "leaseId": {
+          "type": "string",
+          "description": "本次租约标识，不落日志。"
+        },
+        "fence": {
+          "type": "integer",
+          "description": "尝试序号，旧尝试不能提交。",
+          "minimum": 0
+        },
+        "sourceId": {
+          "type": "string",
+          "description": "本机必须显式绑定的来源UUID。"
+        },
+        "sourceRevision": {
+          "type": "integer",
+          "description": "本机来源绑定必须匹配的配置版本。",
+          "minimum": 0
+        },
+        "branch": {
+          "type": "string",
+          "description": "只解析该本地分支，不联网、不切换工作区。"
+        }
+      }
+    },
+    "TaskAck": {
+      "description": "服务端租约确认，false必须终止。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "valid",
+        "state"
+      ],
+      "properties": {
+        "valid": {
+          "type": "boolean",
+          "description": "当前租约与策略是否仍有效。"
+        },
+        "state": {
+          "type": "string",
+          "description": "本次服务端确认状态，无可见任务时REJECTED。"
+        }
+      }
+    },
+    "PreflightManifest": {
+      "description": "本地隔离预检输出，无源码、文件名和宿主定位。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "outcome",
+        "commitId",
+        "archiveSha256",
+        "fileCount",
+        "archiveBytes",
+        "failureCode"
+      ],
+      "properties": {
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "SUCCEEDED",
+            "FAILED"
+          ],
+          "description": "本地执行终态。"
+        },
+        "commitId": {
+          "type": "string",
+          "description": "固定commit；失败为空。"
+        },
+        "archiveSha256": {
+          "type": "string",
+          "description": "隔离归档SHA256；失败为空。"
+        },
+        "fileCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000,
+          "description": "树条目数。"
+        },
+        "archiveBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 268435456,
+          "description": "隔离归档字节。"
+        },
+        "failureCode": {
+          "type": "string",
+          "enum": [
+            "",
+            "BINDING_REQUIRED",
+            "SOURCE_CHANGED",
+            "PREFLIGHT_FAILED"
+          ],
+          "description": "固定失败码，不传日志。"
+        }
+      }
+    },
+    "Candidate": {
+      "type": "object",
+      "description": "导入者私有的不可变候选版本，不代表审核或发布。",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "digest",
+        "archiveBytes",
+        "createdAt",
+        "mode"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "候选UUID。",
+          "pattern": "^[a-f0-9-]{36}$"
+        },
+        "digest": {
+          "type": "string",
+          "description": "规范资产清单SHA256。",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "archiveBytes": {
+          "type": "integer",
+          "description": "原ZIP字节数。",
+          "minimum": 0,
+          "maximum": 8388608
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "服务端接收时间。"
+        },
+        "mode": {
+          "type": "string",
+          "description": "明确为外部产物导入。",
+          "enum": [
+            "IMPORTED",
+            "EXECUTED"
+          ]
+        }
+      }
+    },
+    "CandidatePage": {
+      "type": "object",
+      "description": "仅包含当前仍有全部来源授权的本人候选分页。",
+      "additionalProperties": false,
+      "required": [
+        "items",
+        "page",
+        "total"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "description": "本页可读候选，最多20项。",
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/$defs/Candidate"
+          }
+        },
+        "page": {
+          "type": "integer",
+          "description": "从1开始的当前页。",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "total": {
+          "type": "integer",
+          "description": "当前可见总数。",
+          "minimum": 0
+        }
+      }
+    },
+    "CandidateAsset": {
+      "type": "object",
+      "description": "包内单个资产的完整性摘要，不渲染或执行资产正文。",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "bytes",
+        "meta"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "五类资产目录下的相对文件名。",
+          "maxLength": 512
+        },
+        "sha256": {
+          "type": "string",
+          "description": "原文字节SHA256。",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "bytes": {
+          "type": "integer",
+          "description": "UTF8原文字节数。",
+          "minimum": 0,
+          "maximum": 524288
+        },
+        "meta": {
+          "type": "object",
+          "description": "固定Skill契约校验的原始元数据，仅作为不可信数据展示。",
+          "additionalProperties": true
+        }
+      }
+    },
+    "CandidateReport": {
+      "type": "object",
+      "description": "固定版本纯契约校验报告，不证明来源声明真实性或业务正确性。",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "digest",
+        "mode",
+        "skillVersion",
+        "contractVersion",
+        "assets"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "包版本。",
+          "enum": [
+            "1"
+          ]
+        },
+        "digest": {
+          "type": "string",
+          "description": "资产清单SHA256。",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "mode": {
+          "type": "string",
+          "description": "导入模式。",
+          "enum": [
+            "IMPORTED",
+            "EXECUTED"
+          ]
+        },
+        "skillVersion": {
+          "type": "string",
+          "description": "固定Skill版本。",
+          "enum": [
+            "1.0.2"
+          ]
+        },
+        "contractVersion": {
+          "type": "string",
+          "description": "资产契约版本。",
+          "enum": [
+            "2.0"
+          ]
+        },
+        "assets": {
+          "type": "array",
+          "description": "包内资产摘要，最大128项。",
+          "maxItems": 128,
+          "items": {
+            "$ref": "#/$defs/CandidateAsset"
+          }
+        }
+      }
+    },
+    "AnalysisSource": {
+      "type": "object",
+      "description": "多来源逆向固定材料引用，不含本机绝对路径或凭证。",
+      "additionalProperties": false,
+      "required": [
+        "sourceId",
+        "revision",
+        "alias",
+        "kind",
+        "branch",
+        "locator"
+      ],
+      "properties": {
+        "sourceId": {
+          "type": "string",
+          "description": "平台来源UUID",
+          "maxLength": 36
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "固定来源配置版本"
+        },
+        "alias": {
+          "type": "string",
+          "description": "唯一材料标识",
+          "maxLength": 80
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "REPOSITORY",
+            "DOCUMENT"
+          ],
+          "description": "平台来源类型"
+        },
+        "branch": {
+          "type": "string",
+          "description": "代码分支；资料为空",
+          "maxLength": 200
+        },
+        "locator": {
+          "type": "string",
+          "description": "资料根内相对定位；代码为空",
+          "maxLength": 1000
+        }
+      }
+    },
+    "AnalysisTask": {
+      "type": "object",
+      "description": "本人多来源逆向任务，成功仅表示候选接收。",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "sourceId",
+        "sourceName",
+        "sourceRevision",
+        "branch",
+        "deviceId",
+        "deviceName",
+        "name",
+        "revision",
+        "attemptNumber",
+        "attemptId",
+        "state",
+        "commitId",
+        "archiveSha256",
+        "fileCount",
+        "archiveBytes",
+        "message",
+        "createdAt",
+        "updatedAt",
+        "product",
+        "domain",
+        "scope",
+        "documentsChoice",
+        "sources",
+        "candidateId"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "任务稳定UUID。"
+        },
+        "sourceId": {
+          "type": "string",
+          "description": "已授权仓库来源UUID。"
+        },
+        "sourceName": {
+          "type": "string",
+          "description": "创建时来源名称快照，不随目录改名。"
+        },
+        "sourceRevision": {
+          "type": "integer",
+          "description": "创建时来源配置版本，变化后拒绝执行。",
+          "minimum": 0
+        },
+        "branch": {
+          "type": "string",
+          "description": "明确选择的本地Git分支，不代表远端最新。"
+        },
+        "deviceId": {
+          "type": "string",
+          "description": "所有者私有设备UUID。"
+        },
+        "deviceName": {
+          "type": "string",
+          "description": "创建时设备名快照。"
+        },
+        "name": {
+          "type": "string",
+          "description": "逆向任务名称，不含脚本。"
+        },
+        "revision": {
+          "type": "integer",
+          "description": "任务控制版本，用于并发取消或重试。",
+          "minimum": 0
+        },
+        "attemptNumber": {
+          "type": "integer",
+          "description": "当前尝试序号，从1开始。",
+          "minimum": 0
+        },
+        "attemptId": {
+          "type": "string",
+          "description": "当前执行尝试UUID。"
+        },
+        "state": {
+          "type": "string",
+          "description": "当前尝试状态：QUEUED/RUNNING/SUCCEEDED/FAILED/CANCELLED/EXPIRED。"
+        },
+        "commitId": {
+          "type": "string",
+          "description": "固定Git完整commit，未完成为空字符串。"
+        },
+        "archiveSha256": {
+          "type": "string",
+          "description": "本地隔离归档摘要，未完成为空字符串。"
+        },
+        "fileCount": {
+          "type": "integer",
+          "description": "已提交树中的条目数，未完成为0。",
+          "minimum": 0
+        },
+        "archiveBytes": {
+          "type": "integer",
+          "description": "本地隔离归档字节数，未完成为0。",
+          "minimum": 0
+        },
+        "message": {
+          "type": "string",
+          "description": "固定可公开状态说明，不接受任意设备日志。"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "任务UTC创建时间。"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "本次尝试UTC更新时间。"
+        },
+        "product": {
+          "type": "string",
+          "description": "产品稳定slug",
+          "maxLength": 80
+        },
+        "domain": {
+          "type": "string",
+          "description": "业务域稳定slug",
+          "maxLength": 80
+        },
+        "scope": {
+          "type": "string",
+          "description": "明确业务范围，不是脚本",
+          "maxLength": 2000
+        },
+        "documentsChoice": {
+          "type": "string",
+          "enum": [
+            "INCLUDE",
+            "NONE",
+            ""
+          ],
+          "description": "显式资料选择"
+        },
+        "sources": {
+          "type": "array",
+          "description": "全部固定来源快照",
+          "minItems": 0,
+          "maxItems": 16,
+          "items": {
+            "$ref": "#/$defs/AnalysisSource"
+          }
+        },
+        "candidateId": {
+          "type": "string",
+          "description": "本次尝试成功提交的私有候选；未提交为空",
+          "maxLength": 36
+        }
+      }
+    },
+    "AnalysisPage": {
+      "description": "本人逆向任务分页",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items",
+        "page",
+        "total"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "description": "当前页任务。",
+          "items": {
+            "$ref": "#/$defs/AnalysisTask"
+          }
+        },
+        "page": {
+          "type": "integer",
+          "description": "从1开始页码。",
+          "minimum": 0
+        },
+        "total": {
+          "type": "integer",
+          "description": "当前成员任务数量。",
+          "minimum": 0
+        }
+      }
+    },
+    "AnalysisLease": {
+      "type": "object",
+      "description": "独立协议的逆向租约，空租约其余字段为空；模型仅在运行时配置。",
+      "additionalProperties": false,
+      "required": [
+        "available",
+        "taskId",
+        "attemptId",
+        "leaseId",
+        "fence",
+        "sourceId",
+        "sourceRevision",
+        "branch",
+        "product",
+        "domain",
+        "scope",
+        "documentsChoice",
+        "sources"
+      ],
+      "properties": {
+        "available": {
+          "type": "boolean",
+          "description": "是否领取到任务；false时其余文本为空、fence和sourceRevision为0。"
+        },
+        "taskId": {
+          "type": "string",
+          "description": "任务UUID，无任务为空。"
+        },
+        "attemptId": {
+          "type": "string",
+          "description": "本次尝试UUID，无任务为空。"
+        },
+        "leaseId": {
+          "type": "string",
+          "description": "本次租约标识，不落日志。"
+        },
+        "fence": {
+          "type": "integer",
+          "description": "尝试序号，旧尝试不能提交。",
+          "minimum": 0
+        },
+        "sourceId": {
+          "type": "string",
+          "description": "本机必须显式绑定的来源UUID。"
+        },
+        "sourceRevision": {
+          "type": "integer",
+          "description": "本机来源绑定必须匹配的配置版本。",
+          "minimum": 0
+        },
+        "branch": {
+          "type": "string",
+          "description": "只解析该本地分支，不联网、不切换工作区。"
+        },
+        "product": {
+          "type": "string",
+          "description": "产品稳定slug",
+          "maxLength": 80
+        },
+        "domain": {
+          "type": "string",
+          "description": "业务域稳定slug",
+          "maxLength": 80
+        },
+        "scope": {
+          "type": "string",
+          "description": "明确业务范围，不是脚本",
+          "maxLength": 2000
+        },
+        "documentsChoice": {
+          "type": "string",
+          "enum": [
+            "INCLUDE",
+            "NONE",
+            ""
+          ],
+          "description": "显式资料选择"
+        },
+        "sources": {
+          "type": "array",
+          "description": "全部固定来源快照",
+          "minItems": 0,
+          "maxItems": 16,
+          "items": {
+            "$ref": "#/$defs/AnalysisSource"
+          }
+        }
+      }
+    },
+    "Review": {
+      "type": "object",
+      "description": "当前主体可见的不可变候选审核快照。",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "candidateId",
+        "digest",
+        "submitterId",
+        "reviewerId",
+        "method",
+        "state",
+        "revision",
+        "comment",
+        "createdAt",
+        "decidedAt",
+        "submitterName",
+        "reviewerName"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "审核UUID。"
+        },
+        "candidateId": {
+          "type": "string",
+          "description": "不可变候选UUID。"
+        },
+        "digest": {
+          "type": "string",
+          "description": "送审摘要。"
+        },
+        "submitterId": {
+          "type": "string",
+          "description": "提交者UUID。"
+        },
+        "reviewerId": {
+          "type": "string",
+          "description": "实际审核人UUID。"
+        },
+        "method": {
+          "type": "string",
+          "description": "SELF或ASSIGNED，不代替审核动作。",
+          "enum": [
+            "SELF",
+            "ASSIGNED"
+          ]
+        },
+        "state": {
+          "type": "string",
+          "description": "审核状态，与原包及发布状态独立。",
+          "enum": [
+            "PENDING",
+            "CONFIRMED",
+            "REJECTED"
+          ]
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "CAS控制版本。"
+        },
+        "comment": {
+          "type": "string",
+          "description": "审核意见，待审为空。",
+          "maxLength": 2000
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "提交时间。"
+        },
+        "decidedAt": {
+          "type": "string",
+          "description": "决定时间，待审为空。"
+        },
+        "submitterName": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "提交人当前显示名称，不作为身份依据。"
+        },
+        "reviewerName": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "审核人当前显示名称，不作为身份依据。"
+        }
+      }
+    },
+    "ReviewPage": {
+      "type": "object",
+      "description": "审核权限过滤分页。",
+      "additionalProperties": false,
+      "required": [
+        "items",
+        "page",
+        "total"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "description": "本人提交/受派且来源有效的审核。",
+          "items": {
+            "$ref": "#/$defs/Review"
+          },
+          "maxItems": 20
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "起始1页码。"
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "当前可见数量。"
+        }
+      }
+    },
+    "Reviewer": {
+      "type": "object",
+      "description": "当前候选可选审核人摘要，不隐含授权。",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "displayName"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "当前企业有效成员UUID。"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "审核人显示名。"
+        }
+      }
+    },
+    "CandidateContent": {
+      "type": "object",
+      "description": "通过原包及资产摘要校验的纯文本，不能作为HTML执行。",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "content"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "清单中相对路径。",
+          "maxLength": 512
+        },
+        "sha256": {
+          "type": "string",
+          "description": "原始正文摘要。",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "content": {
+          "type": "string",
+          "description": "UTF8原文，字节限制由服务执行。",
+          "maxLength": 524288
+        }
+      }
+    },
+    "Navigation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "源目录按当前动作过滤的可达页面，不包含资源范围。",
+      "required": [
+        "path",
+        "title",
+        "group",
+        "groupTitle",
+        "permission",
+        "visible"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "页面路径"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "页面名称"
+        },
+        "group": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "目录标识"
+        },
+        "groupTitle": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "目录名称"
+        },
+        "permission": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "页面读取动作"
+        },
+        "visible": {
+          "type": "boolean",
+          "description": "仅导航显示，不撤销动作或路由资格。"
+        }
+      }
+    },
+    "ReadinessCheck": {
+      "type": "object",
+      "description": "设备自报的脱敏本机检查项；不是平台信任证明或模型质量结论。",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "status"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "固定检查类型。",
+          "enum": [
+            "NODE",
+            "GIT",
+            "SKILL",
+            "AGENT",
+            "CREDENTIAL",
+            "MATERIALS"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "description": "本机检查状态。",
+          "enum": [
+            "PASS",
+            "FAIL",
+            "NOT_CHECKED"
+          ]
+        }
+      }
+    },
+    "Readiness": {
+      "type": "object",
+      "description": "本人本次设备与来源选择的短期就绪检查，不代替执行授权。",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "state",
+        "expiresAt",
+        "sources",
+        "checks"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "检查UUID；无可领取项为空。"
+        },
+        "state": {
+          "type": "string",
+          "description": "平台状态，过期不再表示就绪。",
+          "enum": [
+            "PENDING",
+            "CHECKING",
+            "COMPLETE",
+            "EXPIRED"
+          ]
+        },
+        "expiresAt": {
+          "type": "string",
+          "description": "平台UTC有效期。"
+        },
+        "sources": {
+          "type": "array",
+          "description": "仅本次当前授权来源，不含本机路径。",
+          "items": {
+            "$ref": "#/$defs/AnalysisSource"
+          },
+          "maxItems": 16
+        },
+        "checks": {
+          "type": "array",
+          "description": "固定六类检查，无原始日志。",
+          "items": {
+            "$ref": "#/$defs/ReadinessCheck"
+          },
+          "maxItems": 6
+        }
+      }
+    },
+    "Department": {
+      "type": "object",
+      "description": "Department企业管理公开契约，不含凭证。",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "parentId",
+        "name",
+        "sortOrder",
+        "enabled",
+        "revision"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "当前对象UUID"
+        },
+        "parentId": {
+          "type": "string",
+          "description": "上级UUID，根为空"
+        },
+        "name": {
+          "type": "string",
+          "description": "名称"
+        },
+        "sortOrder": {
+          "type": "integer",
+          "description": "升序排序"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "是否启用"
+        },
+        "revision": {
+          "type": "integer",
+          "description": "当前乐观版本"
+        }
+      }
+    },
+    "MemberDepartment": {
+      "type": "object",
+      "description": "MemberDepartment企业管理公开契约，不含凭证。",
+      "additionalProperties": false,
+      "required": [
+        "departmentId",
+        "revision"
+      ],
+      "properties": {
+        "departmentId": {
+          "type": "string",
+          "description": "当前部门UUID，分配未设置时为空"
+        },
+        "revision": {
+          "type": "integer",
+          "description": "当前乐观版本"
+        }
+      }
+    },
+    "DepartmentGrant": {
+      "type": "object",
+      "description": "DepartmentGrant企业管理公开契约，不含凭证。",
+      "additionalProperties": false,
+      "required": [
+        "departmentId",
+        "resourceKind",
+        "resourceId",
+        "sourceRevision",
+        "includeChildren",
+        "revision",
+        "active"
+      ],
+      "properties": {
+        "departmentId": {
+          "type": "string",
+          "description": "当前部门UUID，分配未设置时为空"
+        },
+        "resourceKind": {
+          "type": "string",
+          "description": "SYSTEM或SOURCE"
+        },
+        "resourceId": {
+          "type": "string",
+          "description": "资源UUID"
+        },
+        "sourceRevision": {
+          "type": "integer",
+          "description": "来源版本，目录为0"
+        },
+        "includeChildren": {
+          "type": "boolean",
+          "description": "明确是否包含下级"
+        },
+        "revision": {
+          "type": "integer",
+          "description": "当前乐观版本"
+        },
+        "active": {
+          "type": "boolean",
+          "description": "是否有效；撤销保留版本墓碑，false不产生授权"
+        }
+      }
+    },
+    "MenuSetting": {
+      "type": "object",
+      "description": "MenuSetting企业管理公开契约，不含凭证。",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "title",
+        "group",
+        "groupTitle",
+        "permission",
+        "sortOrder",
+        "visible",
+        "revision"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "固定页面路径"
+        },
+        "title": {
+          "type": "string",
+          "description": "显示名称"
+        },
+        "group": {
+          "type": "string",
+          "description": "固定组标识"
+        },
+        "groupTitle": {
+          "type": "string",
+          "description": "固定组名称"
+        },
+        "permission": {
+          "type": "string",
+          "description": "注册读取动作"
+        },
+        "sortOrder": {
+          "type": "integer",
+          "description": "升序排序"
+        },
+        "visible": {
+          "type": "boolean",
+          "description": "仅导航入口是否显示"
+        },
+        "revision": {
+          "type": "integer",
+          "description": "当前乐观版本"
+        }
+      }
+    },
+    "LockState": {
+      "type": "object",
+      "description": "当前有效会话最小锁状态，不携带业务权限或凭证。",
+      "additionalProperties": false,
+      "required": [
+        "locked",
+        "displayName"
+      ],
+      "properties": {
+        "locked": {
+          "type": "boolean",
+          "description": "当前服务端会话是否锁定"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "当前账户显示名称"
+        }
+      }
+    },
+    "Profile": {
+      "type": "object",
+      "description": "本人账户资料，角色和部门只读，不携带密码。",
+      "additionalProperties": false,
+      "required": [
+        "username",
+        "displayName",
+        "tenantName",
+        "departmentName",
+        "roles",
+        "revision"
+      ],
+      "properties": {
+        "username": {
+          "type": "string",
+          "description": "不可自行修改的登录名"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "本人显示名称"
+        },
+        "tenantName": {
+          "type": "string",
+          "description": "当前企业名称"
+        },
+        "departmentName": {
+          "type": "string",
+          "description": "主部门名称，未分配为空串"
+        },
+        "roles": {
+          "type": "array",
+          "description": "当前基础和显式角色名称",
+          "items": {
+            "type": "string"
+          }
+        },
+        "revision": {
+          "type": "integer",
+          "description": "显示资料乐观版本"
+        }
+      }
+    },
+    "MemberDirectory": {
+      "type": "object",
+      "description": "用户页只读主部门关联；需同时具备成员与部门读取，不授予任何资源权限。",
+      "additionalProperties": false,
+      "required": [
+        "memberId",
+        "departmentId"
+      ],
+      "properties": {
+        "memberId": {
+          "type": "string",
+          "description": "当前企业成员UUID，不为空。"
+        },
+        "departmentId": {
+          "type": "string",
+          "description": "主部门UUID；未分配为空串。"
+        }
+      }
+    }
+  }
+}

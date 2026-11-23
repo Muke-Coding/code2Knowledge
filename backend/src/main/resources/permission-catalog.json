@@ -1,0 +1,722 @@
+{
+  "version": 1,
+  "permissions": [
+    {
+      "code": "member.read",
+      "name": "查看成员",
+      "description": "读取本企业成员公开摘要，不含凭证；不允许创建、启停或分配角色。",
+      "module": "member",
+      "moduleName": "成员",
+      "group": "enterprise",
+      "groupName": "企业管理",
+      "order": 0
+    },
+    {
+      "code": "member.create",
+      "name": "创建成员",
+      "description": "创建本企业普通成员和初始口令；新成员无业务动作，不允许创建引导管理员。",
+      "module": "member",
+      "moduleName": "成员",
+      "group": "enterprise",
+      "groupName": "企业管理",
+      "order": 1
+    },
+    {
+      "code": "member.status",
+      "name": "启停成员",
+      "description": "启停本企业普通成员；停用立即失效旧会话和设备身份版本，不可操作引导管理员。",
+      "module": "member",
+      "moduleName": "成员",
+      "group": "enterprise",
+      "groupName": "企业管理",
+      "order": 2
+    },
+    {
+      "code": "role.read",
+      "name": "查看角色",
+      "description": "读取本企业自定义角色与只读内置角色及动作目录，不允许修改分配。",
+      "module": "role",
+      "moduleName": "角色与权限",
+      "group": "enterprise",
+      "groupName": "企业管理",
+      "order": 10
+    },
+    {
+      "code": "role.create",
+      "name": "创建角色",
+      "description": "创建本企业自定义角色，可选择已注册权限；属于可委派权限的高权限操作。",
+      "module": "role",
+      "moduleName": "角色与权限",
+      "group": "enterprise",
+      "groupName": "企业管理",
+      "order": 11
+    },
+    {
+      "code": "role.update",
+      "name": "编辑角色",
+      "description": "按版本编辑本企业自定义角色及动作，影响已分配成员；不能编辑内置角色。",
+      "module": "role",
+      "moduleName": "角色与权限",
+      "group": "enterprise",
+      "groupName": "企业管理",
+      "order": 12
+    },
+    {
+      "code": "role.delete",
+      "name": "删除角色",
+      "description": "按版本删除未被成员引用的自定义角色；禁止删除内置角色。",
+      "module": "role",
+      "moduleName": "角色与权限",
+      "group": "enterprise",
+      "groupName": "企业管理",
+      "order": 13
+    },
+    {
+      "code": "role.assign",
+      "name": "分配角色",
+      "description": "可委派角色权限，属于高权限；仍受同企业和受保护账号约束。",
+      "module": "role",
+      "moduleName": "角色与权限",
+      "group": "enterprise",
+      "groupName": "企业管理",
+      "order": 14
+    },
+    {
+      "code": "catalog.read",
+      "name": "查看授权目录",
+      "description": "读取另行授权的系统目录元数据；目录可见不等于来源分析或知识读取。",
+      "module": "catalog",
+      "moduleName": "系统目录",
+      "group": "knowledge",
+      "groupName": "知识管理",
+      "order": 20
+    },
+    {
+      "code": "catalog.read.all",
+      "name": "查看全部目录",
+      "description": "允许查看本企业全部目录元数据，不授予源码或知识正文权限。",
+      "module": "catalog",
+      "moduleName": "系统目录",
+      "group": "knowledge",
+      "groupName": "知识管理",
+      "order": 21
+    },
+    {
+      "code": "catalog.create",
+      "name": "登记系统",
+      "description": "登记本企业系统名称和说明，不授予其他成员目录或内容权限。",
+      "module": "catalog",
+      "moduleName": "系统目录",
+      "group": "knowledge",
+      "groupName": "知识管理",
+      "order": 22
+    },
+    {
+      "code": "catalog.grant",
+      "name": "授权系统目录",
+      "description": "允许调整本企业此类资源授权，不获得分析或内容访问权。",
+      "module": "catalog",
+      "moduleName": "系统目录",
+      "group": "knowledge",
+      "groupName": "知识管理",
+      "order": 23
+    },
+    {
+      "code": "source.read",
+      "name": "查看授权来源",
+      "description": "读取已逐项授权且当前版本有效的来源元数据，不读取源码或资料正文。",
+      "module": "source",
+      "moduleName": "来源管理",
+      "group": "knowledge",
+      "groupName": "知识管理",
+      "order": 30
+    },
+    {
+      "code": "source.read.all",
+      "name": "查看全部来源",
+      "description": "允许查看本企业全部目录元数据，不授予源码或知识正文权限。",
+      "module": "source",
+      "moduleName": "来源管理",
+      "group": "knowledge",
+      "groupName": "知识管理",
+      "order": 31
+    },
+    {
+      "code": "source.create",
+      "name": "登记来源",
+      "description": "登记本企业仓库或资料定位及系统绑定，不访问网络、本机文件或模型。",
+      "module": "source",
+      "moduleName": "来源管理",
+      "group": "knowledge",
+      "groupName": "知识管理",
+      "order": 32
+    },
+    {
+      "code": "source.update",
+      "name": "编辑来源",
+      "description": "按版本修改来源定位、分支和系统绑定；实际变更使旧版本分析授权失效。",
+      "module": "source",
+      "moduleName": "来源管理",
+      "group": "knowledge",
+      "groupName": "知识管理",
+      "order": 33
+    },
+    {
+      "code": "source.status",
+      "name": "启停来源",
+      "description": "仅启停本企业来源，不允许修改定位或系统绑定；实际变更使旧分析授权失效。",
+      "module": "source",
+      "moduleName": "来源管理",
+      "group": "knowledge",
+      "groupName": "知识管理",
+      "order": 34
+    },
+    {
+      "code": "source.grant",
+      "name": "授权来源",
+      "description": "允许调整本企业此类资源授权，不获得分析或内容访问权。",
+      "module": "source",
+      "moduleName": "来源管理",
+      "group": "knowledge",
+      "groupName": "知识管理",
+      "order": 35
+    },
+    {
+      "code": "source.analyze",
+      "name": "来源分析资格",
+      "description": "对另行逐项授权的当前版本来源检查分析资格；不等于任务创建或候选读取。",
+      "module": "source",
+      "moduleName": "来源管理",
+      "group": "knowledge",
+      "groupName": "知识管理",
+      "order": 36
+    },
+    {
+      "code": "device.read",
+      "name": "查看本人设备",
+      "description": "只读取本人私有设备及连接状态，不包含专用设备凭证。",
+      "module": "device",
+      "moduleName": "我的设备",
+      "group": "runtime",
+      "groupName": "运行管理",
+      "order": 40
+    },
+    {
+      "code": "device.pair",
+      "name": "配对本人设备",
+      "description": "创建单次短期配对码，兑换时重新核验权限，仅可登记本人设备。",
+      "module": "device",
+      "moduleName": "我的设备",
+      "group": "runtime",
+      "groupName": "运行管理",
+      "order": 41
+    },
+    {
+      "code": "device.revoke",
+      "name": "撤销本人设备",
+      "description": "不可逆撤销本人私有设备，不能撤销或查看其他成员设备。",
+      "module": "device",
+      "moduleName": "我的设备",
+      "group": "runtime",
+      "groupName": "运行管理",
+      "order": 42
+    },
+    {
+      "code": "task.read",
+      "name": "查看本人预检",
+      "description": "读取本人预检任务、状态和尝试记录，不取得其他成员任务或来源内容。",
+      "module": "task",
+      "moduleName": "预检任务",
+      "group": "runtime",
+      "groupName": "运行管理",
+      "order": 50
+    },
+    {
+      "code": "task.create",
+      "name": "创建预检",
+      "description": "选择本人设备及当前逐项授权来源创建预检任务；运行时领取和回传重查授权。",
+      "module": "task",
+      "moduleName": "预检任务",
+      "group": "runtime",
+      "groupName": "运行管理",
+      "order": 51
+    },
+    {
+      "code": "task.cancel",
+      "name": "取消本人预检",
+      "description": "按版本取消本人预检任务及租约，取消后的迟到结果不得提交。",
+      "module": "task",
+      "moduleName": "预检任务",
+      "group": "runtime",
+      "groupName": "运行管理",
+      "order": 52
+    },
+    {
+      "code": "task.retry",
+      "name": "重试本人预检",
+      "description": "按版本重试本人失败或取消的预检任务；仍须当前创建资格、来源授权及设备可用。",
+      "module": "task",
+      "moduleName": "预检任务",
+      "group": "runtime",
+      "groupName": "运行管理",
+      "order": 53
+    },
+    {
+      "code": "analysis.read",
+      "name": "查看本人逆向",
+      "description": "读取本人逆向任务、状态和尝试记录，不取得其他成员任务或来源内容。",
+      "module": "analysis",
+      "moduleName": "逆向任务",
+      "group": "runtime",
+      "groupName": "运行管理",
+      "order": 60
+    },
+    {
+      "code": "analysis.create",
+      "name": "创建逆向",
+      "description": "选择本人设备及当前逐项授权来源创建逆向任务；运行时领取和回传重查授权。",
+      "module": "analysis",
+      "moduleName": "逆向任务",
+      "group": "runtime",
+      "groupName": "运行管理",
+      "order": 61
+    },
+    {
+      "code": "analysis.cancel",
+      "name": "取消本人逆向",
+      "description": "按版本取消本人逆向任务及租约，取消后的迟到结果不得提交。",
+      "module": "analysis",
+      "moduleName": "逆向任务",
+      "group": "runtime",
+      "groupName": "运行管理",
+      "order": 62
+    },
+    {
+      "code": "analysis.retry",
+      "name": "重试本人逆向",
+      "description": "按版本重试本人失败或取消的逆向任务；仍须当前创建资格、来源授权及设备可用。",
+      "module": "analysis",
+      "moduleName": "逆向任务",
+      "group": "runtime",
+      "groupName": "运行管理",
+      "order": 63
+    },
+    {
+      "code": "candidate.read",
+      "name": "查看本人候选",
+      "description": "列出并在线读取本人候选；每次校验全部来源当前分析授权，不含ZIP下载。",
+      "module": "candidate",
+      "moduleName": "候选知识",
+      "group": "knowledge",
+      "groupName": "知识管理",
+      "order": 70
+    },
+    {
+      "code": "candidate.download",
+      "name": "下载本人原包",
+      "description": "下载本人完整候选ZIP；下载前后均重查候选和全部来源当前授权。",
+      "module": "candidate",
+      "moduleName": "候选知识",
+      "group": "knowledge",
+      "groupName": "知识管理",
+      "order": 71
+    },
+    {
+      "code": "candidate.import",
+      "name": "导入本人候选",
+      "description": "通过本人设备导入固定契约候选包；必须校验全部来源当前授权和包完整性。",
+      "module": "candidate",
+      "moduleName": "候选知识",
+      "group": "knowledge",
+      "groupName": "知识管理",
+      "order": 72
+    },
+    {
+      "code": "review.read",
+      "name": "查看本人相关审核",
+      "description": "读取本人提交或显式指派给本人的审核及上下文，仍须全部来源当前分析授权。",
+      "module": "review",
+      "moduleName": "候选审核",
+      "group": "knowledge",
+      "groupName": "知识管理",
+      "order": 80
+    },
+    {
+      "code": "review.submit",
+      "name": "提交本人候选审核",
+      "description": "提交本人不可变候选进行自审或指定审核；不自动确认内容或发布。",
+      "module": "review",
+      "moduleName": "候选审核",
+      "group": "knowledge",
+      "groupName": "知识管理",
+      "order": 81
+    },
+    {
+      "code": "review.decide",
+      "name": "决定本人受派审核",
+      "description": "仅审核显式提交给自己且全部来源授权有效的候选，自审无例外。",
+      "module": "review",
+      "moduleName": "候选审核",
+      "group": "knowledge",
+      "groupName": "知识管理",
+      "order": 82
+    },
+    {
+      "code": "department.read",
+      "name": "查看部门",
+      "description": "查看部门，仅限当前企业；不自动授予来源或知识读取权。",
+      "module": "department",
+      "moduleName": "部门管理",
+      "group": "enterprise",
+      "groupName": "系统设置",
+      "order": 100
+    },
+    {
+      "code": "department.create",
+      "name": "新增部门",
+      "description": "新增部门，仅限当前企业；不自动授予来源或知识读取权。",
+      "module": "department",
+      "moduleName": "部门管理",
+      "group": "enterprise",
+      "groupName": "系统设置",
+      "order": 101
+    },
+    {
+      "code": "department.update",
+      "name": "编辑部门",
+      "description": "编辑部门，仅限当前企业；不自动授予来源或知识读取权。",
+      "module": "department",
+      "moduleName": "部门管理",
+      "group": "enterprise",
+      "groupName": "系统设置",
+      "order": 102
+    },
+    {
+      "code": "department.delete",
+      "name": "删除部门",
+      "description": "删除部门，仅限当前企业；不自动授予来源或知识读取权。",
+      "module": "department",
+      "moduleName": "部门管理",
+      "group": "enterprise",
+      "groupName": "系统设置",
+      "order": 103
+    },
+    {
+      "code": "department.assign",
+      "name": "分配成员部门",
+      "description": "分配成员部门，仅限当前企业；不自动授予来源或知识读取权。",
+      "module": "department",
+      "moduleName": "部门管理",
+      "group": "enterprise",
+      "groupName": "系统设置",
+      "order": 104
+    },
+    {
+      "code": "menu.read",
+      "name": "查看菜单",
+      "description": "查看菜单，仅限当前企业；不自动授予来源或知识读取权。",
+      "module": "menu",
+      "moduleName": "菜单管理",
+      "group": "enterprise",
+      "groupName": "系统设置",
+      "order": 105
+    },
+    {
+      "code": "menu.update",
+      "name": "配置菜单",
+      "description": "配置菜单，仅限当前企业；不自动授予来源或知识读取权。",
+      "module": "menu",
+      "moduleName": "菜单管理",
+      "group": "enterprise",
+      "groupName": "系统设置",
+      "order": 106
+    }
+  ],
+  "menus": [
+    {
+      "key": "catalog",
+      "title": "系统目录",
+      "group": "knowledge",
+      "groupTitle": "知识工作台",
+      "path": "/systems",
+      "permission": "catalog.read",
+      "order": 0
+    },
+    {
+      "key": "source",
+      "title": "来源管理",
+      "group": "knowledge",
+      "groupTitle": "知识工作台",
+      "path": "/sources",
+      "permission": "source.read",
+      "order": 1
+    },
+    {
+      "key": "candidate",
+      "title": "候选知识",
+      "group": "knowledge",
+      "groupTitle": "知识工作台",
+      "path": "/candidates",
+      "permission": "candidate.read",
+      "order": 2
+    },
+    {
+      "key": "review",
+      "title": "候选审核",
+      "group": "knowledge",
+      "groupTitle": "知识工作台",
+      "path": "/reviews",
+      "permission": "review.read",
+      "order": 3
+    },
+    {
+      "key": "analysis",
+      "title": "逆向任务",
+      "group": "runtime",
+      "groupTitle": "逆向工作台",
+      "path": "/analyses",
+      "permission": "analysis.read",
+      "order": 4
+    },
+    {
+      "key": "task",
+      "title": "预检任务",
+      "group": "runtime",
+      "groupTitle": "逆向工作台",
+      "path": "/tasks",
+      "permission": "task.read",
+      "order": 5
+    },
+    {
+      "key": "device",
+      "title": "我的设备",
+      "group": "device",
+      "groupTitle": "设备管理",
+      "path": "/devices",
+      "permission": "device.read",
+      "order": 6
+    },
+    {
+      "key": "member",
+      "title": "成员",
+      "group": "enterprise",
+      "groupTitle": "系统设置",
+      "path": "/members",
+      "permission": "member.read",
+      "order": 7
+    },
+    {
+      "key": "role",
+      "title": "角色与权限",
+      "group": "enterprise",
+      "groupTitle": "系统设置",
+      "path": "/roles",
+      "permission": "role.read",
+      "order": 8
+    },
+    {
+      "path": "/departments",
+      "title": "部门管理",
+      "group": "enterprise",
+      "groupTitle": "系统设置",
+      "permission": "department.read"
+    },
+    {
+      "path": "/menus",
+      "title": "菜单管理",
+      "group": "enterprise",
+      "groupTitle": "系统设置",
+      "permission": "menu.read"
+    }
+  ],
+  "legacy": {
+    "member.manage": [
+      "member.read",
+      "member.create",
+      "member.status"
+    ],
+    "role.manage": [
+      "role.read",
+      "role.create",
+      "role.update",
+      "role.delete",
+      "role.assign"
+    ],
+    "catalog.manage": [
+      "catalog.read",
+      "catalog.read.all",
+      "catalog.create",
+      "catalog.grant"
+    ],
+    "source.manage": [
+      "source.read",
+      "source.read.all",
+      "source.create",
+      "source.update",
+      "source.status",
+      "source.grant"
+    ],
+    "source.analyze": [
+      "source.analyze",
+      "source.read",
+      "task.read",
+      "task.create",
+      "task.cancel",
+      "task.retry",
+      "analysis.read",
+      "analysis.create",
+      "analysis.cancel",
+      "analysis.retry",
+      "candidate.read",
+      "candidate.download",
+      "candidate.import",
+      "review.read",
+      "review.submit"
+    ],
+    "review.decide": [
+      "review.read",
+      "review.decide"
+    ]
+  },
+  "baseline": [
+    "catalog.read",
+    "device.read",
+    "device.pair",
+    "device.revoke",
+    "task.read",
+    "task.cancel",
+    "analysis.read",
+    "analysis.cancel"
+  ],
+  "dependencies": {
+    "member.read": [],
+    "member.create": [
+      "member.read"
+    ],
+    "member.status": [
+      "member.read"
+    ],
+    "role.read": [],
+    "role.create": [
+      "role.read"
+    ],
+    "role.update": [
+      "role.read"
+    ],
+    "role.delete": [
+      "role.read"
+    ],
+    "role.assign": [
+      "role.read",
+      "member.read"
+    ],
+    "catalog.read": [],
+    "catalog.read.all": [
+      "catalog.read"
+    ],
+    "catalog.create": [
+      "catalog.read",
+      "catalog.read.all"
+    ],
+    "catalog.grant": [
+      "catalog.read",
+      "catalog.read.all"
+    ],
+    "source.read": [],
+    "source.read.all": [
+      "source.read"
+    ],
+    "source.create": [
+      "source.read",
+      "source.read.all"
+    ],
+    "source.update": [
+      "source.read",
+      "source.read.all"
+    ],
+    "source.status": [
+      "source.read",
+      "source.read.all"
+    ],
+    "source.grant": [
+      "source.read",
+      "source.read.all"
+    ],
+    "source.analyze": [
+      "source.read"
+    ],
+    "device.read": [],
+    "device.pair": [
+      "device.read"
+    ],
+    "device.revoke": [
+      "device.read"
+    ],
+    "task.read": [],
+    "task.create": [
+      "task.read",
+      "source.read",
+      "source.analyze",
+      "device.read"
+    ],
+    "task.cancel": [
+      "task.read"
+    ],
+    "task.retry": [
+      "task.read",
+      "task.create"
+    ],
+    "analysis.read": [],
+    "analysis.create": [
+      "analysis.read",
+      "source.read",
+      "source.analyze",
+      "device.read"
+    ],
+    "analysis.cancel": [
+      "analysis.read"
+    ],
+    "analysis.retry": [
+      "analysis.read",
+      "analysis.create"
+    ],
+    "candidate.read": [
+      "source.analyze"
+    ],
+    "candidate.download": [
+      "candidate.read",
+      "source.analyze"
+    ],
+    "candidate.import": [
+      "candidate.read",
+      "source.analyze"
+    ],
+    "review.read": [
+      "source.analyze"
+    ],
+    "review.submit": [
+      "review.read",
+      "source.analyze",
+      "candidate.read"
+    ],
+    "review.decide": [
+      "review.read",
+      "source.analyze"
+    ],
+    "department.create": [
+      "department.read"
+    ],
+    "department.update": [
+      "department.read"
+    ],
+    "department.delete": [
+      "department.read"
+    ],
+    "department.assign": [
+      "department.read"
+    ],
+    "menu.update": [
+      "menu.read"
+    ]
+  }
+}

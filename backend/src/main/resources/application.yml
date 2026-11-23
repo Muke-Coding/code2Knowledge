@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: code2knowledge-platform
+  autoconfigure:
+    # 工程基线不伪造数据库配置；持久化工作包须显式移除此排除并验收迁移与数据源。
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration
+      - org.mybatis.spring.boot.autoconfigure.MybatisAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+server:
+  address: 127.0.0.1
+  port: 18080
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      show-components: never

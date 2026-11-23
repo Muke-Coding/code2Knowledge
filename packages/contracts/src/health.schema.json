@@ -1,0 +1,1 @@
+{"$schema":"http://json-schema.org/draft-07/schema#","$id":"urn:c2k:health:1","title":"基础服务存活响应","description":"仅表达基础进程健康，不表达数据库、登录或任务能力已就绪。","type":"object","required":["status"],"properties":{"status":{"description":"Spring Actuator 的进程健康状态，不可为空。","enum":["UP","DOWN","OUT_OF_SERVICE","UNKNOWN"]}},"additionalProperties":false}

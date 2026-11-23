@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.code2knowledge.authorization.mapper.AuthorizationMapper">
+    <!-- 企业非键更新锁使授权写入串行，同时允许设备审计外键的KEY SHARE，避免账户锁和企业锁互等。 -->
+    <select id="lockTenant" resultType="string">
+        SELECT id FROM c2k_tenant WHERE id = #{tenantId} FOR NO KEY UPDATE
+    </select>
+
+    <!-- 基础身份映射受保护内置角色，附加角色必须通过同企业复合外键；每次调用重查，不信任会话权限快照。 -->
+    <select id="effective" resultType="string">
+        SELECT DISTINCT p.permission_code
+        FROM c2k_account a
+        JOIN c2k_role_permission p ON p.role_id = a.role OR EXISTS (
+            SELECT 1 FROM c2k_member_role m
+            WHERE m.tenant_id = a.tenant_id AND m.member_id = a.id AND m.role_id = p.role_id
+        )
+        WHERE a.tenant_id = #{tenantId} AND a.id = #{memberId} AND a.enabled
+        ORDER BY p.permission_code
+    </select>
+
+    <!-- 只暴露已实现动作，知识和任务动作后续迁移增加。 -->
+    <select id="permissions" resultType="com.code2knowledge.authorization.domain.vo.PermissionVO">
+        SELECT code, name, description FROM c2k_permission ORDER BY code
+    </select>
+
+    <!-- 内置角色只读，全企业一致；自定义角色严格企业过滤。 -->
+    <select id="roles" resultType="com.code2knowledge.authorization.domain.entity.RoleDO">
+        SELECT id, tenant_id, name, description, built_in, revision FROM c2k_role
+        WHERE tenant_id = #{tenantId} OR built_in
+        ORDER BY built_in DESC, name, id
+    </select>
+
+    <!-- 外企业ID和不存在均不可见。 -->
+    <select id="role" resultType="com.code2knowledge.authorization.domain.entity.RoleDO">
+        SELECT id, tenant_id, name, description, built_in, revision FROM c2k_role
+        WHERE id = #{id} AND (tenant_id = #{tenantId} OR built_in)
+    </select>
+
+    <!-- 调用前服务已校验角色归属。 -->
+    <select id="rolePermissions" resultType="string">
+        SELECT permission_code FROM c2k_role_permission WHERE role_id = #{id} ORDER BY permission_code
+    </select>
+
+    <!-- 内置标志不可由DTO决定。 -->
+    <insert id="insertRole">
+        INSERT INTO c2k_role (id, tenant_id, name, description)
+        VALUES (#{role.id}, #{role.tenantId}, #{role.name}, #{role.description})
+    </insert>
+
+    <!-- 企业与版本双重限制防止越权和覆盖；内置角色数据库层再次拒绝。 -->
+    <update id="updateRole">
+        UPDATE c2k_role SET name = #{role.name}, description = #{role.description}, revision = revision + 1
+        WHERE id = #{role.id} AND tenant_id = #{role.tenantId} AND NOT built_in AND revision = #{role.revision}
+    </update>
+
+    <!-- 与角色更新同事务，失败回滚全部动作变更。 -->
+    <delete id="clearPermissions">
+        DELETE FROM c2k_role_permission WHERE role_id = #{id}
+    </delete>
+
+    <!-- 动作码外键保证不能写入不存在动作。 -->
+    <insert id="addPermission">
+        INSERT INTO c2k_role_permission (role_id, permission_code) VALUES (#{id}, #{code})
+    </insert>
+
+    <!-- 有成员引用时拒绝删除，必须先明确撤销分配。 -->
+    <select id="assignedCount" resultType="int">
+        SELECT count(*) FROM c2k_member_role WHERE tenant_id = #{tenantId} AND role_id = #{id}
+    </select>
+
+    <!-- 无级联删除，服务须先检查引用并移除动作。 -->
+    <delete id="deleteRole">
+        DELETE FROM c2k_role WHERE tenant_id = #{tenantId} AND id = #{id} AND NOT built_in
+    </delete>
+
+    <!-- 不返回其他企业角色或受保护基础身份。 -->
+    <select id="memberRoles" resultType="string">
+        SELECT role_id FROM c2k_member_role
+        WHERE tenant_id = #{tenantId} AND member_id = #{memberId} ORDER BY role_id
+    </select>
+
+    <!-- 乐观版本用于避免多窗口角色分配互相覆盖。 -->
+    <select id="memberRevision" resultType="int">
+        SELECT role_revision FROM c2k_account WHERE tenant_id = #{tenantId} AND id = #{memberId} AND role = 'MEMBER'
+    </select>
+
+    <!-- 全量替换只在显式数组与版本通过后执行，空数组为明确撤销。 -->
+    <delete id="clearMemberRoles">
+        DELETE FROM c2k_member_role WHERE tenant_id = #{tenantId} AND member_id = #{memberId}
+    </delete>
+
+    <!-- 双重复合外键阻止跨企业成员或角色。 -->
+    <insert id="addMemberRole">
+        INSERT INTO c2k_member_role (tenant_id, member_id, role_id) VALUES (#{tenantId}, #{memberId}, #{roleId})
+    </insert>
+
+    <!-- 与角色替换及审计同事务，不改变auth_version，撤角色不会无故吊销私有设备。 -->
+    <update id="bumpMemberRevision">
+        UPDATE c2k_account SET role_revision = role_revision + 1
+        WHERE tenant_id = #{tenantId} AND id = #{memberId} AND role = 'MEMBER' AND role_revision = #{revision}
+    </update>
+</mapper>

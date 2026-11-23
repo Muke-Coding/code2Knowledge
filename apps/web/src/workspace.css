@@ -1,0 +1,243 @@
+/** 企业工作界面语义令牌与布局；沿用诊断页中性灰白与蓝色视觉，窄窗导航置顶，长文本不推动页面横向溢出。 */
+:root { --surface: #fff; --canvas: #f5f7fb; --ink: #1f2937; --muted: #596579; --line: #e2e7ef; --accent: #2563eb; --selected: #eef3fc; --table-head: #f8fafc; }
+button,input,textarea,select { font: inherit; }
+input,textarea { caret-color: var(--accent); }
+* { scrollbar-color: #a8b2c1 transparent; scrollbar-width: thin; }
+.wordmark { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; letter-spacing: -.5px; text-decoration: none; white-space: nowrap; }
+.wordmark .anticon { font-size: 25px; color: var(--accent); }
+.login-layout { display: grid; grid-template-columns: minmax(300px, 42%) 1fr; min-height: 100svh; }
+.login-brand { display: flex; flex-direction: column; position: relative; background: var(--selected); padding: 46px; overflow: hidden; }
+.login-brand .wordmark { z-index: 1; }
+.brand-structure { margin: auto; position: relative; width: min(80%, 260px); height: 260px; }
+.brand-structure span { position: absolute; width: 160px; height: 160px; border: 1px solid #93b4ee; border-radius: 32px; transform: rotate(-30deg) skew(12deg, 12deg); }
+.brand-structure span:nth-child(1) { top: 0; left: 0; }
+.brand-structure span:nth-child(2) { top: 48px; left: 36px; }
+.brand-structure span:nth-child(3) { top: 96px; left: 72px; background: #2563eb12; }
+.brand-caption { font-size: 16px; color: var(--muted); }
+.login-main { min-height: 100svh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 56px 32px; position: relative; background: var(--surface); }
+.login-form { width: min(100%, 350px); }
+.login-form h1 { font-size: 34px; margin: 0 0 36px; letter-spacing: -.025em; }
+.login-form .ant-form-item { margin-bottom: 24px; }
+.login-form .ant-btn { margin-top: 12px; }
+.login-footer { border: none; position: absolute; bottom: 24px; padding: 0; color: var(--muted); }
+.connection-error { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 5; max-width: calc(100% - 32px); width: 600px; }
+.workspace { display: grid; grid-template-columns: 216px minmax(0,1fr); min-height: 100svh; }
+.sidebar { background: var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 20px 8px 16px; position: sticky; top: 0; height: 100svh; }
+.sidebar .wordmark { font-size: 15px; gap: 8px; padding-inline: 8px; height: 36px; }
+.sidebar nav { min-height: 0; overflow-y: auto; margin-top: 26px; }
+.sidebar-bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding: 16px 6px 0; border-top: 1px solid var(--line); }
+.account-name { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.workspace-main { min-width: 0; padding: 24px 28px; }
+.workspace-main:focus { outline: none; }
+.page-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.page-heading h1 { font-size: 23px; margin: 0; line-height: 1.4; letter-spacing: -.025em; }
+.data-surface { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); overflow: hidden; }
+.list-toolbar { display: flex; align-items: center; justify-content: space-between; min-height: 56px; padding: 10px 22px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+.data-surface .ant-table { background: transparent; }
+.data-surface .ant-table-thead>tr>th { background: var(--table-head); color: var(--muted); font-size: 13px; font-weight: 500; }
+.data-surface .ant-table-tbody>tr>td { padding: 13px 16px; }
+.data-surface .ant-pagination { margin-right: 20px!important; }
+.system-link { max-width: 100%; height: auto; padding: 0; text-align: left; white-space: normal; overflow-wrap: anywhere; font-weight: 600; }
+.description-cell { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; max-width: 520px; white-space: normal; overflow-wrap: anywhere; line-height: 1.6; color: var(--muted); }
+.cell-title { font-weight: 550; overflow-wrap: anywhere; }
+.cell-secondary { color: var(--muted); font-size: 12px; margin-top: 4px; overflow-wrap: anywhere; }
+.form-alert { margin-bottom: 24px; }
+.permission-section { margin-top: 38px; border-top: 1px solid var(--line); padding-top: 24px; }
+.permission-section h2 { font-size: 18px; margin: 0 0 26px; }
+.grant-form { display: flex; gap: 10px; }
+.grant-form .ant-select { flex: 1; min-width: 0; }
+.page-loading { min-height: 50svh; display: grid; place-items: center; }
+.drawer-loading { padding: 60px 0; text-align: center; }
+.ant-drawer-title { overflow-wrap: anywhere; }
+.ant-drawer .ant-descriptions-item-content { overflow-wrap: anywhere; }
+@media (max-width: 850px) {
+  .workspace { grid-template-columns: 1fr; }
+  .sidebar { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--line); padding: 20px 22px 12px; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 14px; }
+  .sidebar nav { grid-column: 1 / -1; grid-row: 2; }
+  .sidebar-bottom { margin: 0; padding: 0; border: none; grid-column: 2; grid-row: 1; }
+  .sidebar-bottom .account-name { max-width: 70px; }
+  .workspace-main { padding: 30px 22px; }
+}
+@media (max-width: 600px) {
+  .login-layout { grid-template-columns: 1fr; }
+  .login-brand { padding: 24px; background: var(--canvas); }
+  .brand-structure,.brand-caption { display: none; }
+  .login-main { min-height: calc(100svh - 73px); justify-content: flex-start; padding: 60px 26px 70px; }
+  .login-form h1 { font-size: 30px; }
+  .page-heading { margin-bottom: 24px; }
+  .page-heading h1 { font-size: 26px; }
+  .ant-drawer-content-wrapper { max-width: 100vw; }
+  .list-toolbar { padding-inline: 16px; }
+}
+@media (prefers-reduced-motion:no-preference) {
+  .login-form { animation: login-arrive .24s cubic-bezier(.16,1,.3,1); }
+  @keyframes login-arrive { from { transform: translateY(8px); } to { transform: translateY(0); } }
+}
+.pair-step { margin-bottom: 32px; }
+.pair-step h2 { font-size: 18px; margin: 0 0 16px; }
+.pair-step p { font-size: 13px; line-height: 1.8; color: var(--muted); }
+.runtime-command { white-space: pre-wrap; overflow-wrap: anywhere; padding: 18px; border-radius: 10px; background: var(--canvas); font-size: 12px; line-height: 1.8; }
+.pair-code { padding: 14px; border: 1px solid var(--line); border-radius: 10px; display: flex; align-items: center; gap: 10px; }
+.pair-code code { min-width: 0; overflow-wrap: anywhere; font-size: 13px; user-select: all; }
+.pair-code .ant-typography-copy { flex-shrink: 0; margin-left: auto; }
+.pair-regenerate { margin-top: 14px; }
+
+/* 角色页沿用现有表面和语义色；长说明换行，不让权限复选框挤出窄抽屉。 */
+.permission-options { display: flex; flex-direction: column; gap: 20px; width: 100%; }
+.permission-options .ant-checkbox-wrapper { align-items: flex-start; margin-inline-start: 0; }
+.permission-description { display: block; color: var(--muted); font-size: 12px; line-height: 1.6; margin-top: 4px; }
+.role-permissions { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 13px; }
+
+/* 菜单按工作职责分组；分组不授予权限，窄窗保持全部已授权入口可见和可键盘访问。 */
+.sidebar nav { padding-bottom: 20px; }
+.workspace-breadcrumb { color: var(--muted); font-size: 12px; margin-bottom: 24px; }
+.source-toolbar { gap: 16px; flex-wrap: wrap; }
+.list-toolbar .ant-input-search { max-width: 320px; }
+@media(max-width:850px) {
+ .sidebar nav { padding-bottom: 0; }
+ .workspace-breadcrumb { margin-bottom: 18px; }
+}
+
+/* 预检仅用公共语义令牌，不用进度百分比暗示未计量的执行；来源标识可选择、复制并在窄窗换行。 */
+.task-binding { padding: 16px; background: var(--canvas); border-radius: 10px; margin-bottom: 24px; font-size: 13px; line-height: 1.8; overflow-wrap: anywhere; }
+.task-state { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.task-message { color: var(--muted); line-height: 1.7; margin-block: 16px 28px; }
+
+/* 使用Ant Design Menu的原生分组与选中态；这里只负责工作区布局，不重写点击、焦点或键盘协议。 */
+.sidebar .ant-menu { background: transparent; border-inline-end: 0 !important; }
+.sidebar .ant-menu-item-selected { font-weight: 600; }
+.sidebar .ant-menu-title-content a:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 4px; }
+
+/* 父子折叠菜单沿用Menu原生交互，窄窗保留纵向层级；限定导航高度以便主操作仍可到达。 */
+@media(max-width:850px) { .sidebar nav { margin-top: 0; max-height: 220px; } }
+
+/* 候选版本沿用知识区表格层级；长指纹和文件名在抽屉内换行，避免撑开窄窗。 */
+.heading-info { font-size: 15px; vertical-align: middle; color: var(--muted); }
+.candidate-version { font-family: ui-monospace, monospace; }
+.candidate-hash, .candidate-path { overflow-wrap: anywhere; word-break: break-word; }
+.candidate-tags { margin-bottom: 22px; }
+.candidate-guide { padding-inline-start: 22px; line-height: 1.8; }
+.candidate-guide li { margin-bottom: 12px; }
+
+/* 逆向创建以范围→资料选择→来源→设备排序；窄窗口改单列，不改变键盘及DOM顺序。 */
+.analysis-identity { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.analysis-selected { margin-top: 20px; }
+@media (max-width: 560px) { .analysis-identity { grid-template-columns: 1fr; gap: 0; } }
+
+/* 原包内容可含长行与业务换行；使用纯文本且不突破抽屉宽度。 */
+.asset-content { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; padding: 16px; background: var(--surface-muted, #f5f7f7); border-radius: 8px; font-size: 13px; }
+.review-comment { white-space: pre-wrap; overflow-wrap: anywhere; }
+.review-actions { margin-top: 24px; }
+
+/* 角色权限树沿用Ant Design焦点和半选交互，限制长权限码溢出窄窗口。 */
+.permission-tree { min-width: 0; }
+.permission-tree .ant-tree { margin: 12px 0; }
+.permission-tree .ant-tree-title { overflow-wrap: anywhere; }
+.permission-tree .ant-typography { font-size: 12px; }
+
+/* 表格只展示权限数量，完整动作通过原生Popover按需查看，避免管理角色撑高整行。 */
+.permission-summary { max-height: 320px; max-width: min(320px, 80vw); overflow: auto; }
+.permission-summary > div { padding: 6px 0; }
+.permission-summary code { display: block; font-size: 12px; overflow-wrap: anywhere; }
+
+/* 就绪诊断保留结果与主操作之间的呼吸空间；宽屏多列复用AntD描述列表，窄窗自然单列。 */
+.readiness-panel { margin-block-end: 24px; }
+.readiness-panel .readiness-checks { margin-block: 16px 12px; }
+.readiness-panel > .ant-alert { margin-block-start: 12px; }
+
+/* 标准企业工作壳：固定导航、独立顶栏和任务页签，内容滚动不挤压菜单。 */
+.workspace-body { min-width: 0; }
+.workspace-topbar { height: 60px; display: flex; align-items: center; gap: 16px; background: var(--surface); border-bottom: 1px solid var(--line); padding-inline: 20px; }
+.workspace-topbar .workspace-breadcrumb { margin: 0; }
+.topbar-account { margin-inline-start: auto; font-size: 13px; color: var(--muted); }
+.workspace-tabs { margin-block: -8px 20px; }
+.workspace-tabs .ant-tabs-nav { margin-bottom: 0; }
+.workspace-collapsed { grid-template-columns: 72px minmax(0,1fr); }
+.workspace-collapsed .sidebar .wordmark { font-size: 0; justify-content: center; }
+.workspace-collapsed .sidebar-bottom .account-name { display: none; }
+.workspace-collapsed .sidebar { padding-inline: 0; }
+.workspace-collapsed .sidebar nav { overflow: visible; }
+@media(max-width:850px) {
+  .workspace,.workspace-collapsed { grid-template-columns: 1fr; }
+  .workspace .sidebar { padding: 12px 16px; gap: 8px; }
+  .sidebar nav { margin-top: 0; }
+  .workspace-collapsed .sidebar nav { display: none; }
+  .workspace-collapsed .sidebar .wordmark { font-size: 15px; justify-content: flex-start; }
+  .workspace-main { padding: 20px 16px; }
+  .workspace-topbar { padding-inline: 12px; }
+  .topbar-account { display: none; }
+}
+
+/* 外观语义与AntD深色算法同步；不改变状态色、权限或组件交互。 */
+:root[data-theme="dark"] { --surface: #1b2330; --canvas: #111722; --ink: #e5eaf3; --muted: #a8b4c6; --line: #39465a; --accent: #8bb3ff; --selected: #253b60; --table-head: #222e3e; }
+:root[data-theme="dark"] .brand-structure span { border-color: #496aa0; }
+:root[data-theme="dark"] ::selection { background: #355387; color: #ffffff; }
+.workspace-tools { margin-inline-start: auto; display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.workspace-tools > .ant-btn { width: 36px; height: 36px; }
+.account-trigger.ant-btn { width: auto; height: 40px; display: inline-flex; align-items: center; gap: 8px; max-width: 240px; }
+.account-trigger .ant-avatar { flex-shrink: 0; }
+.account-trigger .ant-avatar,.profile-summary .ant-avatar { background: var(--selected); color: var(--accent); }
+.account-trigger-name { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.fullscreen-error { position: fixed; top: 68px; right: 16px; z-index: 1200; max-width: calc(100vw - 32px); }
+.profile-layout { display: grid; grid-template-columns: minmax(240px, 320px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.profile-summary,.profile-editor { padding: 24px; min-width: 0; }
+.profile-summary h2 { margin-block: 16px 24px; overflow-wrap: anywhere; }
+.profile-summary .ant-descriptions-item-content { overflow-wrap: anywhere; }
+.profile-summary .ant-tag { white-space: normal; overflow-wrap: anywhere; }
+.profile-editor .ant-form { max-width: 440px; }
+.lock-layout { display: grid; place-items: center; min-height: 100svh; padding: 24px; background: var(--canvas); }
+.lock-panel { width: min(100%, 380px); padding: 32px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.lock-panel > .ant-avatar { color: var(--accent); background: var(--selected); }
+.lock-panel h1 { font-size: 24px; margin: 20px 0 8px; }
+.lock-name { color: var(--muted); overflow-wrap: anywhere; margin: 0 0 28px; }
+.lock-panel > .ant-btn { margin-top: 16px; }
+@media(max-width:850px) { .workspace-topbar { gap: 8px; } .workspace-tools { gap: 0; } .account-trigger-name,.account-trigger .anticon-down { display: none; } .workspace-breadcrumb { min-width: 0; flex: 1; } .workspace-breadcrumb ol { flex-wrap: nowrap; overflow: hidden; white-space: nowrap; } .profile-layout { grid-template-columns: 1fr; } }
+
+/* 系统设置参考OpenDevFlow：筛选、业务操作和表格各自成区，用户页保留左侧组织树。 */
+.settings-page { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.settings-page .page-heading { margin: 0; }
+.settings-page .page-heading h1 { font-size: 20px; letter-spacing: 0; }
+.settings-page .form-alert { margin: 0; }
+.settings-filters.ant-form { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 16px 24px; padding: 20px 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.settings-filter-fields { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px 24px; flex: 1; min-width: 0; }
+.settings-filter-fields .ant-form-item { margin: 0; min-width: 0; }
+.settings-filter-fields .ant-form-item-control { width: 240px; min-width: 0; }
+.settings-filter-fields .ant-select { width: 160px; }
+.settings-filter-fields .ant-form-item-label { align-self: center; }
+.settings-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-width: 0; }
+.settings-result-count { color: var(--muted); font-size: 13px; flex-shrink: 0; }
+.settings-user-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 16px; align-items: start; }
+.settings-department-filter { min-width: 0; min-height: 520px; padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.settings-department-filter .ant-tree { margin-top: 12px; max-width: 100%; overflow: auto; }
+.settings-department-filter .ant-tree-node-content-wrapper { min-width: 0; overflow-wrap: anywhere; }
+.settings-page .data-surface { min-width: 0; }
+.settings-page .ant-table-cell .ant-btn-link { padding-inline: 8px; }
+.settings-dialog { top: 32px; padding-bottom: 32px; }
+.settings-dialog .ant-modal-content { display: flex; flex-direction: column; max-height: calc(100svh - 64px); }
+.settings-dialog .ant-modal-header, .settings-dialog .ant-modal-footer { flex-shrink: 0; }
+.settings-dialog .ant-modal-body { min-height: 0; padding-top: 20px; overflow-y: auto; flex: 1 1 auto; }
+.settings-dialog .ant-form-item { margin-bottom: 22px; }
+.settings-dialog .ant-input-number { width: 100%; }
+.settings-dialog .form-alert { margin-bottom: 20px; }
+.settings-form-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 20px; }
+.settings-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 16px; margin-top: 24px; border-top: 1px solid var(--line); }
+.settings-dialog .permission-tree { padding: 12px; border: 1px solid var(--line); border-radius: 6px; }
+.settings-dialog .permission-tree .ant-tree { max-height: 340px; overflow: auto; }
+@media(max-width:1100px) { .settings-user-layout { grid-template-columns: 210px minmax(0,1fr); } }
+@media(max-width:900px) { .settings-user-layout { grid-template-columns: 1fr; } .settings-department-filter { min-height: auto; } .settings-department-filter .ant-tree { max-height: 220px; } }
+@media(max-width:600px) {
+  .settings-filters.ant-form { padding: 16px; gap: 14px; }
+  .settings-filter-fields { flex: 1 0 100%; width: 100%; flex-direction: column; align-items: stretch; gap: 12px; }
+  .settings-filter-fields .ant-form-item { display: block; }
+  .settings-filter-fields .ant-form-item-label { padding-bottom: 6px; }
+  .settings-filter-fields .ant-form-item-control, .settings-filter-fields .ant-select { width: 100%; }
+  .settings-filter-actions { margin-left: auto; }
+  .settings-actions { align-items: flex-start; flex-wrap: wrap; }
+  .settings-actions > .ant-space { justify-content: flex-end; flex-wrap: wrap; margin-left: auto; }
+  .settings-form-grid { grid-template-columns: 1fr; gap: 0; }
+  .settings-dialog { top: 16px; padding-bottom: 16px; }
+  .settings-dialog .ant-modal-content { max-height: calc(100svh - 32px); }
+}
+
+.permission-tree-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.settings-dialog .ant-modal-footer { border-top: 1px solid var(--line); padding-top: 16px; }

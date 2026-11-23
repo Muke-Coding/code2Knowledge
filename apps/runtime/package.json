@@ -1,0 +1,26 @@
+{
+  "name": "@c2k/runtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "c2k-runtime": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test dist/doctor.test.js dist/runtime.test.js dist/preflight.test.js dist/skill-adapter.test.js dist/candidate-import.test.js dist/agent-profile.test.js dist/analysis-materials.test.js dist/claude-agent.test.js dist/analysis-runner.test.js dist/readiness.test.js",
+    "doctor": "node dist/cli.js doctor"
+  },
+  "dependencies": {
+    "@c2k/contracts": "workspace:*",
+    "repomix": "1.19.0",
+    "yauzl": "3.2.0",
+    "yazl": "3.3.1",
+    "@code2knowledge/reverse-kernel": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/yauzl": "2.10.3",
+    "@types/yazl": "3.3.0"
+  }
+}

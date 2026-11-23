@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.code2knowledge.catalog.mapper.CatalogMapper">
+    <!-- 在SQL内先筛选目录权限，不把未授权名称和数量返回应用层。 -->
+    <select id="list" resultType="com.code2knowledge.catalog.domain.vo.SystemVO">
+        SELECT s.id, s.name, s.description
+        FROM c2k_system s
+        WHERE s.tenant_id = #{tenantId}
+          AND (#{admin} OR EXISTS (
+              SELECT 1 FROM c2k_system_grant g
+              WHERE g.tenant_id = s.tenant_id AND g.system_id = s.id
+                AND g.member_id = #{userId} AND g.action = 'catalog.read'
+          ) OR EXISTS (
+              <include refid="com.code2knowledge.organization.mapper.OrganizationMapper.departmentScope"><property name="kind" value="'SYSTEM'"/><property name="version" value="0"/><property name="tenantParameter" value="tenantId"/><property name="memberExpression" value="#{userId}"/></include>
+          ))
+        ORDER BY s.name, s.id
+    </select>
+
+    <!-- 详情和列表执行同样授权，猜ID不会绕过企业与成员过滤。 -->
+    <select id="find" resultType="com.code2knowledge.catalog.domain.vo.SystemVO">
+        SELECT s.id, s.name, s.description
+        FROM c2k_system s
+        WHERE s.tenant_id = #{tenantId} AND s.id = #{id}
+          AND (#{admin} OR EXISTS (
+              SELECT 1 FROM c2k_system_grant g
+              WHERE g.tenant_id = s.tenant_id AND g.system_id = s.id
+                AND g.member_id = #{userId} AND g.action = 'catalog.read'
+          ) OR EXISTS (
+              <include refid="com.code2knowledge.organization.mapper.OrganizationMapper.departmentScope"><property name="kind" value="'SYSTEM'"/><property name="version" value="0"/><property name="tenantParameter" value="tenantId"/><property name="memberExpression" value="#{userId}"/></include>
+          ))
+    </select>
+
+    <!-- 名称企业内唯一，冲突由唯一键拒绝。 -->
+    <insert id="insert">
+        INSERT INTO c2k_system (id, tenant_id, name, description)
+        VALUES (#{system.id}, #{system.tenantId}, #{system.name}, #{system.description})
+    </insert>
+
+    <!-- 仅返回同企业目录的授权，不泄漏其他企业身份。 -->
+    <select id="grants" resultType="com.code2knowledge.catalog.domain.vo.GrantVO">
+        SELECT a.id AS member_id, a.display_name, g.action
+        FROM c2k_system_grant g
+        JOIN c2k_account a ON a.id = g.member_id AND a.tenant_id = g.tenant_id
+        WHERE g.tenant_id = #{tenantId} AND g.system_id = #{systemId}
+        ORDER BY a.username
+    </select>
+
+    <!-- 唯一键处理重复点击和并发授权，同一授权不重复写入。 -->
+    <insert id="grant">
+        INSERT INTO c2k_system_grant (tenant_id, system_id, member_id, action)
+        VALUES (#{tenantId}, #{systemId}, #{memberId}, 'catalog.read')
+        ON CONFLICT DO NOTHING
+    </insert>
+
+    <!-- 幂等撤销无物理资源删除，下次读取直接应用新权限，不依赖缓存失效。 -->
+    <delete id="revoke">
+        DELETE FROM c2k_system_grant
+        WHERE tenant_id = #{tenantId} AND system_id = #{systemId}
+          AND member_id = #{memberId} AND action = 'catalog.read'
+    </delete>
+</mapper>

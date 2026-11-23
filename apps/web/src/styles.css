@@ -1,0 +1,27 @@
+/** Web 工程诊断布局：阅读优先、清晰状态、窄屏不横向溢出；动效遵守系统偏好。 */
+:root { color: var(--ink, #1f2937); background: var(--canvas, #f5f7fb); font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif; font-synthesis: none; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+a { color: inherit; }
+button,a { -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 3px solid #2563eb; outline-offset: 4px; }
+.skip-link { position:absolute; top:-60px; left:16px; padding:12px; background:var(--surface, white); z-index:10; }
+.skip-link:focus { top:10px; }
+.shell { max-width: 1440px; min-height:100svh; margin: auto; padding:0 64px; display:flex; flex-direction:column; }
+.masthead { min-height:100px; display:flex; align-items:center; justify-content:space-between; gap:16px; border-bottom:1px solid var(--line, #e2e7ef); }
+.brand { font-size:20px; font-weight:700; letter-spacing:-.7px; display:flex; align-items:center; gap:12px; text-decoration:none; }
+.brand .anticon { color:#2563eb; font-size:27px; }
+.main { flex:1; width:100%; max-width:900px; margin:0 auto; padding:84px 0 72px; }
+h1 { font-size:clamp(32px,4.5vw,54px); letter-spacing:-.03em; line-height:1.25; margin:22px 0 16px; font-weight:650; }
+.intro { font-size:16px; color:var(--muted, #596579); margin:0 0 46px; }
+.diagnostic { background:var(--surface, white); border:1px solid var(--line, #e2e7ef); border-radius:16px; padding:30px;  }
+.diagnostic-top { display:flex; justify-content:space-between; gap:20px; align-items:center; }
+h2 { font-size:22px; letter-spacing:-.5px; margin:10px 0 0; font-weight:600; }
+.status-area { margin-top:30px; min-height:96px; }
+.checking { display:flex; gap:12px; padding:24px 0; color:var(--muted, #596579); align-items:center; }
+.boundary { display:flex; gap:12px; color:var(--muted, #596579); font-size:13px; line-height:1.8; margin-top:24px; }
+footer { display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; border-top:1px solid var(--line, #e2e7ef); padding:24px 0; color:var(--muted, #596579); font-size:12px; }
+@media(max-width:600px) { .shell { padding:0 22px; } .masthead { min-height:78px; } .brand { font-size:17px; gap:8px; } .main { padding:48px 0; } .intro { font-size:14px; margin-bottom:30px; } .diagnostic { padding:22px 18px; } .diagnostic-top { gap:12px; align-items:flex-start; flex-direction:column; } .status-area { margin-top:22px; } }
+@media(prefers-reduced-motion:no-preference) { .main { animation:arrive .3s ease-out both; } @keyframes arrive { from {opacity:0;transform:translateY(6px)} to {opacity:1;transform:translateY(0)} } }
+
+::selection { background:#dbeafe; color:#1f2937; }

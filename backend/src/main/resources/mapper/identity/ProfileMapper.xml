@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.code2knowledge.identity.mapper.ProfileMapper">
+    <!-- 目标只取当前会话本人，不提供客户端账户或企业选择。 -->
+    <select id="find" resultType="com.code2knowledge.identity.domain.entity.ProfileDO">
+        SELECT a.username,a.display_name,t.name AS tenant_name,COALESCE(d.name,'') AS department_name,a.profile_revision AS revision
+        FROM c2k_account a
+        JOIN c2k_tenant t ON t.id=a.tenant_id
+        LEFT JOIN c2k_member_department m ON m.tenant_id=a.tenant_id AND m.member_id=a.id
+        LEFT JOIN c2k_department d ON d.tenant_id=m.tenant_id AND d.id=m.department_id
+        WHERE a.tenant_id=#{tenant} AND a.id=#{member}
+    </select>
+
+    <!-- 基础身份和同企业显式角色名称，不暴露其他成员角色分配。 -->
+    <select id="roles" resultType="string">
+        SELECT r.name
+        FROM c2k_role r
+        JOIN c2k_account a ON a.tenant_id=#{tenant} AND a.id=#{member}
+        WHERE r.id=a.role OR (r.tenant_id=a.tenant_id AND EXISTS (
+            SELECT 1 FROM c2k_member_role m
+            WHERE m.tenant_id=a.tenant_id AND m.member_id=a.id AND m.role_id=r.id
+        ))
+        ORDER BY r.name,r.id
+    </select>
+
+    <!-- 企业锁和资料版本共同防止旧页面覆盖；不改登录名、角色、部门或认证版本。 -->
+    <update id="update">
+        UPDATE c2k_account
+        SET display_name=#{name},profile_revision=profile_revision+1
+        WHERE tenant_id=#{tenant} AND id=#{member} AND profile_revision=#{revision} AND enabled
+    </update>
+
+    <!-- 认证版本递增，使其他旧浏览器会话也不能继续读取；凭证不进入审计正文。 -->
+    <update id="password">
+        UPDATE c2k_account
+        SET password_hash=#{hash},auth_version=auth_version+1
+        WHERE tenant_id=#{tenant} AND id=#{member} AND auth_version=#{authVersion} AND enabled
+    </update>
+</mapper>

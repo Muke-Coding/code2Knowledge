@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.code2knowledge.organization.mapper.OrganizationMapper">
+    <!-- 从主部门向上遍历，停用链不产生任何部门权；UNION路径与16层上限防损坏数据成环，租户逐跳过滤。 -->
+    <sql id="departmentScope">
+        WITH RECURSIVE lineage(id,parent_id,depth,path,valid) AS (
+            SELECT d.id,d.parent_id,1,ARRAY[d.id::text],d.enabled
+            FROM c2k_member_department m
+            JOIN c2k_department d ON d.tenant_id=m.tenant_id AND d.id=m.department_id
+            WHERE m.tenant_id=#{${tenantParameter}} AND m.member_id=${memberExpression}
+            UNION ALL
+            SELECT d.id,d.parent_id,l.depth+1,l.path || d.id::text,l.valid AND d.enabled
+            FROM lineage l
+            JOIN c2k_department d ON d.tenant_id=#{${tenantParameter}} AND d.id=l.parent_id
+            WHERE l.depth &lt; 16 AND NOT d.id=ANY(l.path)
+        )
+        SELECT 1
+        FROM lineage l
+        JOIN c2k_department_grant dg ON dg.tenant_id=#{${tenantParameter}} AND dg.department_id=l.id
+        WHERE l.valid AND dg.active
+          AND NOT EXISTS(SELECT 1 FROM lineage bad WHERE NOT bad.valid)
+          AND EXISTS(SELECT 1 FROM lineage root WHERE root.parent_id IS NULL)
+          AND (l.depth=1 OR dg.include_children)
+          AND dg.resource_kind=${kind} AND dg.resource_id=s.id
+          AND dg.source_revision=${version}
+    </sql>
+
+    <!-- 容量限制同时作用于UI和树授权，拒绝在应用层无限展开。 -->
+    <select id="departments" resultType="com.code2knowledge.organization.domain.vo.DepartmentVO">
+        SELECT id,COALESCE(parent_id,'') AS parent_id,name,sort_order,enabled,revision
+        FROM c2k_department
+        WHERE tenant_id=#{tenant}
+        ORDER BY sort_order,name,id
+        LIMIT 501
+    </select>
+
+    <!-- 成员和归属逐项限定企业，避免用户页逐成员N+1读取；未分配成员也须能被筛选。 -->
+    <select id="directory" resultType="com.code2knowledge.organization.domain.vo.MemberDirectoryVO">
+        SELECT a.id AS member_id, COALESCE(m.department_id, '') AS department_id
+        FROM c2k_account a
+        LEFT JOIN c2k_member_department m
+               ON m.tenant_id = a.tenant_id AND m.member_id = a.id
+        WHERE a.tenant_id = #{tenant}
+        ORDER BY a.username, a.id
+    </select>
+
+    <!-- 父部门同企业由复合外键保障，根空串规范成NULL。 -->
+    <insert id="insert">
+        INSERT INTO c2k_department(id,tenant_id,parent_id,name,sort_order,enabled)
+        VALUES(#{id},#{tenant},NULLIF(#{row.parentId},''),#{row.name},#{row.sortOrder},#{row.enabled})
+    </insert>
+
+    <!-- 企业锁加乐观版本防止并发移动形成环。 -->
+    <update id="update">
+        UPDATE c2k_department
+        SET parent_id=NULLIF(#{row.parentId},''),name=#{row.name},sort_order=#{row.sortOrder},enabled=#{row.enabled},revision=revision+1
+        WHERE tenant_id=#{tenant} AND id=#{id} AND revision=#{row.revision}
+    </update>
+
+    <!-- 引用必须先显式移除，不级联删成员或资源授权。 -->
+    <delete id="delete">
+        DELETE FROM c2k_department
+        WHERE tenant_id=#{tenant} AND id=#{id} AND revision=#{revision}
+    </delete>
+
+    <!-- 同企业检查所有引用，包括停用子部门和失效授权。 -->
+    <select id="references" resultType="int">
+        SELECT (SELECT count(*) FROM c2k_department WHERE tenant_id=#{tenant} AND parent_id=#{id})
+             + (SELECT count(*) FROM c2k_member_department WHERE tenant_id=#{tenant} AND department_id=#{id})
+             + (SELECT count(*) FROM c2k_department_grant WHERE tenant_id=#{tenant} AND department_id=#{id} AND active)
+    </select>
+
+    <!-- 未分配不是虚构默认部门。 -->
+    <select id="member" resultType="com.code2knowledge.organization.domain.vo.MemberDepartmentVO">
+        SELECT COALESCE(department_id,'') AS department_id,revision
+        FROM c2k_member_department
+        WHERE tenant_id=#{tenant} AND member_id=#{member}
+    </select>
+
+    <!-- 服务企业锁核版本；移除仍保留分配版本以阻止旧表单覆盖。 -->
+    <insert id="assign">
+        INSERT INTO c2k_member_department(tenant_id,member_id,department_id,revision)
+        VALUES(#{tenant},#{member},NULLIF(#{department},''),#{revision}+1)
+        ON CONFLICT(tenant_id,member_id) DO UPDATE
+        SET department_id=EXCLUDED.department_id,revision=EXCLUDED.revision
+    </insert>
+
+    <!-- 资源归属在服务先核验；不从系统授权继承SOURCE权限。 -->
+    <select id="grants" resultType="com.code2knowledge.organization.domain.vo.DepartmentGrantVO">
+        SELECT department_id,resource_kind,resource_id,source_revision,include_children,active,revision
+        FROM c2k_department_grant
+        WHERE tenant_id=#{tenant} AND resource_kind=#{kind} AND resource_id=#{resource}
+        ORDER BY department_id
+    </select>
+
+    <!-- 保存精确来源版本，旧版本授权不继续生效。 -->
+    <insert id="grant">
+        INSERT INTO c2k_department_grant(tenant_id,department_id,resource_kind,resource_id,source_revision,include_children,revision,active)
+        VALUES(#{tenant},#{input.departmentId},#{kind},#{resource},#{input.sourceRevision},#{input.includeChildren},#{input.revision}+1,true)
+        ON CONFLICT(tenant_id,department_id,resource_kind,resource_id) DO UPDATE
+        SET source_revision=EXCLUDED.source_revision,include_children=EXCLUDED.include_children,revision=EXCLUDED.revision,active=true
+    </insert>
+
+    <!-- 撤销保留版本墓碑，旧请求不能在撤销后重建授权；不改变来源或个人权限。 -->
+    <update id="revoke">
+        UPDATE c2k_department_grant
+        SET active=false,revision=revision+1
+        WHERE tenant_id=#{tenant} AND department_id=#{department} AND resource_kind=#{kind} AND resource_id=#{resource}
+    </update>
+</mapper>

@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.code2knowledge.review.mapper.ReviewMapper">
+    <!-- 当前主体须有分析动作和每项来源精确版本ACL；源配置变化或停用立即失效。a是当前候选读者，c是候选。 -->
+    <sql id="sourceAccess">
+        a.enabled AND EXISTS (
+            SELECT 1 FROM c2k_role_permission p
+            WHERE p.permission_code = 'source.analyze'
+              AND (p.role_id = a.role OR EXISTS (
+                  SELECT 1 FROM c2k_member_role m
+                  WHERE m.tenant_id = a.tenant_id AND m.member_id = a.id AND m.role_id = p.role_id
+              ))
+        ) AND NOT EXISTS (
+            SELECT 1 FROM c2k_candidate_source cs
+            LEFT JOIN c2k_source s ON s.tenant_id = cs.tenant_id AND s.id = cs.source_id
+            WHERE cs.candidate_id = c.id
+              AND (s.id IS NULL OR NOT s.enabled OR s.revision != cs.source_revision OR NOT (EXISTS (
+                  SELECT 1 FROM c2k_source_grant g
+                  WHERE g.tenant_id = a.tenant_id AND g.member_id = a.id
+                    AND g.source_id = cs.source_id AND g.source_revision = cs.source_revision
+              ) OR EXISTS (<include refid="com.code2knowledge.organization.mapper.OrganizationMapper.departmentScope"><property name="kind" value="'SOURCE'"/><property name="version" value="s.revision"/><property name="tenantParameter" value="tenant"/><property name="memberExpression" value="a.id"/></include>)))
+        )
+    </sql>
+
+    <!-- 审核动作逐请求计算，不从历史送审或作者身份继承。 -->
+    <sql id="reviewAction">
+        EXISTS (
+            SELECT 1 FROM c2k_role_permission p
+            WHERE p.permission_code = 'review.decide'
+              AND (p.role_id = a.role OR EXISTS (
+                  SELECT 1 FROM c2k_member_role m
+                  WHERE m.tenant_id = a.tenant_id AND m.member_id = a.id AND m.role_id = p.role_id
+              ))
+        )
+    </sql>
+
+    <!-- 本人提交或被指定，后者额外要求当前审核动作；双方均须当前全部来源分析权。 -->
+    <sql id="visibleScope">
+        r.tenant_id = #{tenant} AND a.id = #{actor}
+        AND (r.submitter_id = a.id OR (r.reviewer_id = a.id AND <include refid="reviewAction" />))
+        AND <include refid="sourceAccess" />
+    </sql>
+
+    <!-- 只返回当前被授权审核快照，不以管理员绕过。 -->
+    <select id="visible" resultType="com.code2knowledge.review.domain.entity.ReviewDO">
+        SELECT r.id, r.tenant_id, r.candidate_id, r.digest, r.submitter_id, r.reviewer_id, r.method, r.state, r.revision, r.comment, r.request_id, r.created_at, COALESCE(r.decided_at::text, '') AS decided_at,
+            (SELECT n.display_name FROM c2k_account n WHERE n.tenant_id = r.tenant_id AND n.id = r.submitter_id) AS submitter_name,
+            (SELECT n.display_name FROM c2k_account n WHERE n.tenant_id = r.tenant_id AND n.id = r.reviewer_id) AS reviewer_name
+        FROM c2k_review r
+        JOIN c2k_candidate c ON c.id = r.candidate_id AND c.tenant_id = r.tenant_id
+        JOIN c2k_account a ON a.tenant_id = r.tenant_id
+        WHERE r.id = #{id} AND <include refid="visibleScope" />
+    </select>
+
+    <!-- 分页前执行同一可见谓词，不过滤后补空页。 -->
+    <select id="list" resultType="com.code2knowledge.review.domain.entity.ReviewDO">
+        SELECT r.id, r.tenant_id, r.candidate_id, r.digest, r.submitter_id, r.reviewer_id, r.method, r.state, r.revision, r.comment, r.request_id, r.created_at, COALESCE(r.decided_at::text, '') AS decided_at,
+            (SELECT n.display_name FROM c2k_account n WHERE n.tenant_id = r.tenant_id AND n.id = r.submitter_id) AS submitter_name,
+            (SELECT n.display_name FROM c2k_account n WHERE n.tenant_id = r.tenant_id AND n.id = r.reviewer_id) AS reviewer_name
+        FROM c2k_review r
+        JOIN c2k_candidate c ON c.id = r.candidate_id AND c.tenant_id = r.tenant_id
+        JOIN c2k_account a ON a.tenant_id = r.tenant_id
+        WHERE <include refid="visibleScope" />
+        ORDER BY r.created_at DESC, r.id
+        LIMIT 20 OFFSET #{offset}
+    </select>
+
+    <!-- 计数与记录同权限，隐藏审核不计数。 -->
+    <select id="count" resultType="int">
+        SELECT count(*) FROM c2k_review r
+        JOIN c2k_candidate c ON c.id = r.candidate_id AND c.tenant_id = r.tenant_id
+        JOIN c2k_account a ON a.tenant_id = r.tenant_id
+        WHERE <include refid="visibleScope" />
+    </select>
+
+    <!-- 内部幂等查询不作为读取授权。 -->
+    <select id="request" resultType="com.code2knowledge.review.domain.entity.ReviewDO">
+        SELECT r.id, r.tenant_id, r.candidate_id, r.digest, r.submitter_id, r.reviewer_id, r.method, r.state, r.revision, r.comment, r.request_id, r.created_at, COALESCE(r.decided_at::text, '') AS decided_at,
+            (SELECT n.display_name FROM c2k_account n WHERE n.tenant_id = r.tenant_id AND n.id = r.submitter_id) AS submitter_name,
+            (SELECT n.display_name FROM c2k_account n WHERE n.tenant_id = r.tenant_id AND n.id = r.reviewer_id) AS reviewer_name FROM c2k_review r
+        WHERE tenant_id = #{tenant} AND submitter_id = #{owner} AND request_id = #{request}
+    </select>
+
+    <!-- 候选所有者已核；成员摘要只返回拥有全部来源和审核动作的人，最多20项按姓名搜索。 -->
+    <select id="reviewers" resultType="com.code2knowledge.review.domain.vo.ReviewerVO">
+        SELECT a.id, a.display_name FROM c2k_account a
+        JOIN c2k_candidate c ON c.tenant_id = a.tenant_id AND c.id = #{candidate}
+        WHERE a.tenant_id = #{tenant} AND position(lower(#{keyword}) in lower(a.display_name)) > 0
+          AND <include refid="sourceAccess" /> AND <include refid="reviewAction" />
+        ORDER BY a.display_name, a.id LIMIT 20 OFFSET #{offset}
+    </select>
+
+    <!-- 提交及决定都重新检查，选择列表不是权限票据。 -->
+    <select id="eligible" resultType="int">
+        SELECT count(*) FROM c2k_account a
+        JOIN c2k_candidate c ON c.tenant_id = a.tenant_id AND c.id = #{candidate}
+        WHERE a.tenant_id = #{tenant} AND a.id = #{reviewer}
+          AND <include refid="sourceAccess" /> AND <include refid="reviewAction" />
+    </select>
+
+    <!-- 企业锁内查询在途，唯一索引为最终约束。 -->
+    <select id="pending" resultType="int">
+        SELECT count(*) FROM c2k_review
+        WHERE tenant_id = #{tenant} AND candidate_id = #{candidate} AND state = 'PENDING'
+    </select>
+
+    <!-- 审核绑定不可变候选与实际方式，不更新原包；审计由同一服务事务写入。 -->
+    <insert id="insert">
+        INSERT INTO c2k_review (id, tenant_id, candidate_id, digest, submitter_id, reviewer_id, method, request_id)
+        VALUES (#{value.id}, #{value.tenantId}, #{value.candidateId}, #{value.digest}, #{value.submitterId}, #{value.reviewerId}, #{value.method}, #{value.requestId})
+    </insert>
+
+    <!-- 同一在途revision只允许一次决定，不能用并发覆盖已有确认/驳回。 -->
+    <update id="decide">
+        UPDATE c2k_review
+        SET state = #{value.state}, comment = #{value.comment}, revision = revision + 1, decided_at = clock_timestamp()
+        WHERE tenant_id = #{value.tenantId} AND id = #{value.id}
+          AND reviewer_id = #{value.reviewerId} AND revision = #{value.revision} AND state = 'PENDING'
+    </update>
+
+    <!-- 只供已鉴权的审核应用服务获取对象引用，不暴露到Controller。 -->
+    <select id="candidate" resultType="com.code2knowledge.candidate.domain.entity.CandidateDO">
+        SELECT * FROM c2k_candidate WHERE tenant_id = #{tenant} AND id = #{id}
+    </select>
+</mapper>

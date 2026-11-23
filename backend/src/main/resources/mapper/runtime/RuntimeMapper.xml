@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.code2knowledge.runtime.mapper.RuntimeMapper">
+    <!-- 每个所有者仅保留最新待兑换配对码；账户行锁由服务获取，串行创建。 -->
+    <insert id="insertPairing">
+        INSERT INTO c2k_pairing (id, tenant_id, owner_id, owner_version, code_hash, expires_at)
+        VALUES (#{pairing.id}, #{pairing.tenantId}, #{pairing.ownerId}, #{pairing.ownerVersion}, #{pairing.codeHash}, CAST(#{expiresAt} AS timestamptz))
+    </insert>
+
+    <!-- 不删除历史记录，旧码消费后无效。 -->
+    <update id="invalidatePairings">
+        UPDATE c2k_pairing SET consumed = true
+        WHERE tenant_id = #{tenantId} AND owner_id = #{ownerId} AND consumed = false
+    </update>
+
+    <!-- 兑换先锁配对行，两个并发兑换只能有一次成功；不信任设备自报企业。 -->
+    <select id="lockPairing" resultType="com.code2knowledge.runtime.domain.entity.PairingDO">
+        SELECT id, tenant_id, owner_id, owner_version, code_hash
+        FROM c2k_pairing
+        WHERE code_hash = #{hash} AND consumed = false AND expires_at > clock_timestamp()
+        FOR UPDATE
+    </select>
+
+    <!-- 行锁后仍使用消费条件，拒绝重放。 -->
+    <update id="consume">
+        UPDATE c2k_pairing SET consumed = true WHERE id = #{id} AND consumed = false
+    </update>
+
+    <!-- 凭证只存摘要，平台不保留可重放原值；新设备首个心跳前离线。 -->
+    <insert id="insertDevice">
+        INSERT INTO c2k_device (id, tenant_id, owner_id, owner_version, name, os, arch, version, token_hash, expires_at)
+        VALUES (#{device.id}, #{device.tenantId}, #{device.ownerId}, #{device.ownerVersion}, #{device.name}, #{device.os}, #{device.arch}, #{device.version}, #{device.tokenHash}, CAST(#{expiresAt} AS timestamptz))
+    </insert>
+
+    <!-- 与撤销同锁设备行，提交顺序明确；账户版本再由服务验证。 -->
+    <select id="lockCredential" resultType="com.code2knowledge.runtime.domain.entity.DeviceDO">
+        SELECT d.id, d.tenant_id, d.owner_id, d.owner_version, d.name, d.os, d.arch, d.version, d.token_hash, d.revoked
+        FROM c2k_device d
+        WHERE d.token_hash = #{hash} AND d.revoked = false AND d.expires_at > clock_timestamp()
+        FOR UPDATE OF d
+    </select>
+
+    <!-- 心跳以数据库时钟记录，不信任本机时间或任意状态字段。 -->
+    <update id="heartbeat">
+        UPDATE c2k_device SET last_seen = clock_timestamp() WHERE id = #{id} AND revoked = false
+    </update>
+
+    <!-- 所有者及企业在SQL中双重过滤；过期、禁用及认证版本失效优先显示撤销。 -->
+    <select id="list" resultType="com.code2knowledge.runtime.domain.vo.DeviceVO">
+        SELECT d.id, d.name, d.os, d.arch, d.version,
+               CASE WHEN d.revoked OR d.expires_at &lt;= current_timestamp OR NOT a.enabled OR a.auth_version != d.owner_version THEN 'REVOKED'
+                    WHEN d.last_seen > current_timestamp - interval '30 seconds' THEN 'ONLINE'
+                    ELSE 'OFFLINE' END AS status,
+               COALESCE(to_char(d.last_seen AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'), '') AS last_seen
+        FROM c2k_device d
+        JOIN c2k_account a ON a.id = d.owner_id AND a.tenant_id = d.tenant_id
+        WHERE d.tenant_id = #{tenantId} AND d.owner_id = #{ownerId}
+        ORDER BY d.name, d.id
+    </select>
+
+    <!-- 管理员不自动取得其他成员私有设备；无权与不存在同为空。 -->
+    <select id="lockOwned" resultType="com.code2knowledge.runtime.domain.entity.DeviceDO">
+        SELECT id, tenant_id, owner_id, owner_version, name, os, arch, version, token_hash, revoked
+        FROM c2k_device
+        WHERE tenant_id = #{tenantId} AND owner_id = #{ownerId} AND id = #{id}
+        FOR UPDATE
+    </select>
+
+    <!-- 不可逆撤销，幂等重复调用不重复审计。 -->
+    <update id="revoke">
+        UPDATE c2k_device SET revoked = true WHERE id = #{id} AND revoked = false
+    </update>
+
+    <!-- 先读取所有者标识，再由服务按统一顺序加账户锁；之后必须重新锁定验证原对象。 -->
+    <select id="findPairing" resultType="com.code2knowledge.runtime.domain.entity.PairingDO">
+        SELECT id, tenant_id, owner_id, owner_version, code_hash
+        FROM c2k_pairing
+        WHERE code_hash = #{hash} AND consumed = false AND expires_at > clock_timestamp()
+    </select>
+
+    <!-- 先读取所有者标识，再由服务按统一顺序加账户锁；之后必须重新锁定验证原对象。 -->
+    <select id="findCredential" resultType="com.code2knowledge.runtime.domain.entity.DeviceDO">
+        SELECT d.id, d.tenant_id, d.owner_id, d.owner_version, d.name, d.os, d.arch, d.version, d.token_hash, d.revoked
+        FROM c2k_device d
+        WHERE d.token_hash = #{hash} AND d.revoked = false AND d.expires_at > clock_timestamp()
+    </select>
+</mapper>

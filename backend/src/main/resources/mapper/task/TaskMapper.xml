@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.code2knowledge.task.mapper.TaskMapper">
+    <!-- 内部事实包含租约，不直接返回浏览器；时间均由数据库产生，过期判断不用设备时钟。 -->
+    <sql id="fields">
+        t.id, t.tenant_id, t.owner_id, t.source_id, t.source_name, t.source_revision,
+        t.branch, t.device_id, t.device_name, t.name, t.request_id, t.revision,
+        a.number AS attempt_number, a.id AS attempt_id, a.state, a.lease_id,
+        COALESCE(a.lease_until &lt;= clock_timestamp(), false) AS expired,
+        a.commit_id, a.archive_sha256, a.file_count, a.archive_bytes, a.message,
+        to_char(t.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS created_at,
+        to_char(a.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS updated_at
+    </sql>
+
+    <!-- 当前尝试按任务序号连接；历史尝试不会被新租约重用。 -->
+    <sql id="current">
+        FROM c2k_task t
+        JOIN c2k_task_attempt a ON a.task_id = t.id AND a.number = t.attempt_number
+    </sql>
+
+    <!-- 企业和所有者双过滤；find 不允许管理员跨所有者例外。 -->
+    <select id="find" resultType="com.code2knowledge.task.domain.entity.TaskDO">
+        SELECT <include refid="fields" />
+        <include refid="current" />
+        WHERE t.tenant_id = #{tenantId} AND t.owner_id = #{ownerId} AND t.id = #{id}
+    </select>
+
+    <!-- 企业和所有者双过滤；request 不允许管理员跨所有者例外。 -->
+    <select id="request" resultType="com.code2knowledge.task.domain.entity.TaskDO">
+        SELECT <include refid="fields" />
+        <include refid="current" />
+        WHERE t.tenant_id = #{tenantId} AND t.owner_id = #{ownerId} AND t.request_id = #{requestId}
+    </select>
+
+    <!-- 企业和所有者双过滤；list 不允许管理员跨所有者例外。 -->
+    <select id="list" resultType="com.code2knowledge.task.domain.entity.TaskDO">
+        SELECT <include refid="fields" />
+        <include refid="current" />
+        WHERE t.tenant_id = #{tenantId} AND t.owner_id = #{ownerId}
+          AND NOT EXISTS (SELECT 1 FROM c2k_analysis_spec x WHERE x.task_id = t.id)
+        ORDER BY t.created_at DESC, t.id LIMIT 20 OFFSET #{offset}
+    </select>
+
+    <!-- 企业和所有者双过滤；pending 不允许管理员跨所有者例外。 -->
+    <select id="pending" resultType="com.code2knowledge.task.domain.entity.TaskDO">
+        SELECT <include refid="fields" />
+        <include refid="current" />
+        WHERE t.tenant_id = #{tenantId} AND t.owner_id = #{ownerId} AND t.device_id = #{deviceId}
+          AND NOT EXISTS (SELECT 1 FROM c2k_analysis_spec x WHERE x.task_id = t.id)
+          AND a.state IN ('QUEUED', 'RUNNING')
+        ORDER BY t.created_at, t.id LIMIT 100
+    </select>
+
+    <!-- 逆向与预检共享尝试和设备容量，但独立列表与领取，旧运行时不会误领模型任务。 -->
+    <select id="listAnalysis" resultType="com.code2knowledge.task.domain.entity.TaskDO">
+        SELECT <include refid="fields" />
+        <include refid="current" />
+        WHERE t.tenant_id = #{tenantId} AND t.owner_id = #{ownerId}
+          AND EXISTS (SELECT 1 FROM c2k_analysis_spec x WHERE x.task_id = t.id)
+        ORDER BY t.created_at DESC, t.id LIMIT 20 OFFSET #{offset}
+    </select>
+
+    <!-- 只计本人逆向任务。 -->
+    <select id="countAnalysis" resultType="int">
+        SELECT count(*) FROM c2k_task t
+        WHERE tenant_id = #{tenantId} AND owner_id = #{ownerId}
+          AND EXISTS (SELECT 1 FROM c2k_analysis_spec x WHERE x.task_id = t.id)
+    </select>
+
+    <!-- 仅可分析全部来源的逆向设备通过新协议领取。 -->
+    <select id="pendingAnalysis" resultType="com.code2knowledge.task.domain.entity.TaskDO">
+        SELECT <include refid="fields" />
+        <include refid="current" />
+        WHERE t.tenant_id = #{tenantId} AND t.owner_id = #{ownerId} AND t.device_id = #{deviceId}
+          AND EXISTS (SELECT 1 FROM c2k_analysis_spec x WHERE x.task_id = t.id)
+          AND a.state IN ('QUEUED', 'RUNNING')
+        ORDER BY t.created_at, t.id LIMIT 100
+    </select>
+
+    <!-- 企业和所有者双过滤；history 不允许管理员跨所有者例外。 -->
+    <select id="history" resultType="com.code2knowledge.task.domain.entity.TaskDO">
+        SELECT <include refid="fields" />
+        FROM c2k_task t JOIN c2k_task_attempt a ON a.task_id = t.id
+        WHERE t.tenant_id = #{tenantId} AND t.owner_id = #{ownerId} AND t.id = #{id}
+        ORDER BY a.number DESC
+    </select>
+
+    <!-- 分页计数只含本人任务，不泄漏他人数量。 -->
+    <select id="count" resultType="int">
+        SELECT count(*) FROM c2k_task t
+        WHERE tenant_id = #{tenantId} AND owner_id = #{ownerId}
+          AND NOT EXISTS (SELECT 1 FROM c2k_analysis_spec x WHERE x.task_id = t.id)
+    </select>
+
+    <!-- 企业互斥内检查容量，过期租约不占容量；至少一次领取不等于恰好一次执行。 -->
+    <select id="active" resultType="int">
+        SELECT count(*) <include refid="current" />
+        WHERE t.tenant_id = #{tenantId} AND t.device_id = #{deviceId}
+          AND a.state = 'RUNNING' AND a.lease_until > clock_timestamp()
+    </select>
+
+    <!-- 创建幂等键在数据库唯一，所有者与来源归属由服务及复合外键约束。 -->
+    <insert id="insert">
+        INSERT INTO c2k_task(id, tenant_id, owner_id, source_id, source_name, source_revision, branch, device_id, device_name, name, request_id)
+        VALUES(#{task.id}, #{task.tenantId}, #{task.ownerId}, #{task.sourceId}, #{task.sourceName}, #{task.sourceRevision}, #{task.branch}, #{task.deviceId}, #{task.deviceName}, #{task.name}, #{task.requestId})
+    </insert>
+
+    <!-- 每次手动重试新增尝试行，历史结果不被更新。 -->
+    <insert id="attempt">
+        INSERT INTO c2k_task_attempt(id, task_id, number, state)
+        VALUES(#{id}, #{taskId}, #{number}, 'QUEUED')
+    </insert>
+
+    <!-- 排队状态才可领取；租约仅设备协议返回，不作为浏览器可见字段。 -->
+    <update id="lease">
+        UPDATE c2k_task_attempt
+        SET state = 'RUNNING', lease_id = #{leaseId}, lease_until = clock_timestamp() + interval '45 seconds',
+            message = '设备正在固定本地分支与隔离快照', updated_at = clock_timestamp()
+        WHERE id = #{id} AND state = 'QUEUED'
+    </update>
+
+    <!-- 续租不能复活已过期租约；有效性条件与变更同一SQL。 -->
+    <update id="renew">
+        UPDATE c2k_task_attempt
+        SET lease_until = clock_timestamp() + interval '45 seconds', updated_at = clock_timestamp()
+        WHERE id = #{id} AND state = 'RUNNING' AND lease_until > clock_timestamp()
+    </update>
+
+    <!-- 终态不可覆写；成功额外要求未过期，取消/失败允许结束排队任务。 -->
+    <update id="finish">
+        UPDATE c2k_task_attempt
+        SET state = #{state}, message = #{message}, commit_id = #{commitId}, archive_sha256 = #{archiveSha256},
+            file_count = #{fileCount}, archive_bytes = #{archiveBytes}, updated_at = clock_timestamp()
+        WHERE id = #{id} AND state IN ('QUEUED', 'RUNNING')
+          AND (#{state} != 'SUCCEEDED' OR lease_until > clock_timestamp())
+    </update>
+
+    <!-- 没有常驻调度器依赖；列表/领取/续租/提交按数据库时钟惰性结算到期。 -->
+    <update id="expire">
+        UPDATE c2k_task_attempt a
+        SET state = 'EXPIRED', message = '租约已过期；需要手动重试', updated_at = clock_timestamp()
+        FROM c2k_task t
+        WHERE t.id = a.task_id AND t.attempt_number = a.number
+          AND t.tenant_id = #{tenantId} AND t.owner_id = #{ownerId}
+          AND a.state = 'RUNNING' AND a.lease_until &lt;= clock_timestamp()
+    </update>
+
+    <!-- 企业锁内控制版本递增；重试序号只递增不复用。 -->
+    <update id="bump">
+        UPDATE c2k_task SET revision = revision + 1,
+            attempt_number = attempt_number + CASE WHEN #{retry} THEN 1 ELSE 0 END
+        WHERE id = #{id}
+    </update>
+</mapper>
