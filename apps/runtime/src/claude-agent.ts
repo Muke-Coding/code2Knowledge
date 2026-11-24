@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { readFile, readdir } from 'node:fs/promises';
 import { ZipFile } from 'yazl';
-import { makeContext, writeBusinessTemplates, writeMaintenanceTemplates, readAnalysisGuidelines, parseAsset } from '@code2knowledge/reverse-kernel';
+import { makeContext, writeBusinessTemplates, writeMaintenanceTemplates, readAnalysisGuidelines, parseAsset } from '@code2knowledge/kernel';
 import type { AnalysisLease } from '@c2k/contracts';
 import { readAgentProfile, readLocalSecretFile, type AgentProfile } from './agent-profile.js';
 import { type AnalysisMaterials, localTool } from './analysis-materials.js';

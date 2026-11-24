@@ -1,7 +1,7 @@
 /** 仅本机就绪诊断；不调用模型，不发送配置、材料正文或底层错误，临时原料无论成功失败均清理。 */
 import { mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { kernelCompatibility, readAnalysisGuidelines } from '@code2knowledge/reverse-kernel';
+import { kernelCompatibility, readAnalysisGuidelines } from '@code2knowledge/kernel';
 import type { Readiness, ReadinessCheck } from '@c2k/contracts';
 import { privateDirectory } from './store.js';
 import { readAgentProfile, readLocalSecretFile } from './agent-profile.js';

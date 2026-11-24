@@ -129,15 +129,14 @@ V10迁移新增`review.decide`动作；不会默认授给引导管理员。作�
 
 ## 共享逆向内核维护
 
-`packages/reverse-kernel` 是模板、三份逆向规范、知识契约及校验的唯一源码，独立MIT/历史ISC声明随包保留。平台运行时使用 `@code2knowledge/reverse-kernel` 公开入口，不依赖Skill内部路径。输入、产物契约仍为2.0；旧候选封套的skillVersion 1.0.2是兼容基线，不代表本次调用旧Skill向导。
+平台Runtime固定依赖npm `@code2knowledge/kernel@0.1.0`，不再包含同名workspace内核或生成源码副本。唯一源码及测试在Skill仓库packages/reverse-kernel。平台与Java隔离Node校验器只通过公开API调用；部署须携带Runtime的生产node_modules及其yaml依赖，不能仅复制dist。
 
-独立Skill携带生成镜像，保持离线自包含；修改共享源码后用显式Skill源码目录同步，并同时验证两个入口：
+升级时显式修改Runtime依赖版本并更新pnpm锁文件，运行pnpm verify、Java候选真实Node校验和双入口安装验收。产物契约仍为2.0，旧候选skillVersion 1.0.2保留兼容基线含义，不代表平台执行Skill向导。
 
 ```sh
-node scripts/sync-skill-kernel.mjs --skill-root <Skill源码目录> --write
-node scripts/sync-skill-kernel.mjs --skill-root <Skill源码目录> --check
 node verification/kernel-entrypoints.mjs --skill-root <Skill源码目录>
 pnpm verify
+C2K_MINIO_TEST_IMAGE=cooper-minio:local pnpm test:platform
 ```
 
-Skill目录内另执行 `npm test` 与 `npm run check`。生成的kernel/、kernel-manifest.json、三份规范及ontology/rules不单独修改。双入口打包检查使用临时目录与本地yaml包，忽略安装钩子，不注册个人Skill、不调用模型或发送通知。发布版本独立管理，当前改动不自动发布npm。
+双入口检查打包实际安装的内核与Skill，在隔离目录安装并比较模板和报告；不调用个人模型或通知。内核新版本发布不会自动升级平台。

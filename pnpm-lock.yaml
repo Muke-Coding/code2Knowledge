@@ -26,9 +26,9 @@ importers:
       '@c2k/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@code2knowledge/reverse-kernel':
-        specifier: workspace:*
-        version: link:../../packages/reverse-kernel
+      '@code2knowledge/kernel':
+        specifier: 0.1.0
+        version: 0.1.0
       repomix:
         specifier: 1.19.0
         version: 1.19.0(typescript@5.9.3)
@@ -85,12 +85,6 @@ importers:
       ajv:
         specifier: 8.18.0
         version: 8.18.0
-
-  packages/reverse-kernel:
-    dependencies:
-      yaml:
-        specifier: 2.9.0
-        version: 2.9.0
 
 packages:
 
@@ -234,6 +228,10 @@ packages:
 
   '@clack/prompts@0.11.0':
     resolution: {integrity: sha512-pMN5FcrEw9hUkZA4f+zLlzivQSeQf5dRGJjSUbvVYDLvpKCdQx5OaknvKzgbtXOizhP+SJJJjqEbOe55uKKfAw==}
+
+  '@code2knowledge/kernel@0.1.0':
+    resolution: {integrity: sha512-/YwCko3iU5JmDTk81QSDtNyb2d+DIcOlFzAnffwLR0tb3FxZE3aauG1kYie6A5XOCHJnZTfDfMiNL80FjZbfYA==}
+    engines: {node: '>=20'}
 
   '@emotion/hash@0.8.0':
     resolution: {integrity: sha512-kBJtf7PH6aWwZ6fka3zQ0p6SBYzx4fl1LoZXE2RrnYST9Xljm7WfKJrU4g/Xr3Beg72MLrp1AWNUmuYJTL7Cow==}
@@ -1706,6 +1704,10 @@ snapshots:
       '@clack/core': 0.5.0
       picocolors: 1.1.1
       sisteransi: 1.0.5
+
+  '@code2knowledge/kernel@0.1.0':
+    dependencies:
+      yaml: 2.9.0
 
   '@emotion/hash@0.8.0': {}
 

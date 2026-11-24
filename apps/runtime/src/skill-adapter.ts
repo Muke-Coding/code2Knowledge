@@ -5,7 +5,7 @@ import { constants } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { fromBuffer, type Entry, type ZipFile } from 'yauzl';
-import { validateContract, kernelCompatibility } from '@code2knowledge/reverse-kernel';
+import { validateContract, kernelCompatibility } from '@code2knowledge/kernel';
 /** 单个原始资产；保留UTF-8正文与相对定位，摘要按原始字节计算。 */
 export interface KnowledgeFile {
   /** 五类目录下相对路径，不包含本机绝对定位。 */

@@ -1,5 +1,5 @@
 /** 共享内核候选清单构造；执行端和服务端子进程共用预算，模板预估不替代最终原包校验。 */
-import { parseAsset } from '@code2knowledge/reverse-kernel';
+import { parseAsset } from '@code2knowledge/kernel';
 import { parsePlatform, type CandidateReport } from '@c2k/contracts';
 import type { KnowledgeFile } from './skill-adapter.js';
 /** 各层候选清单最大128KiB，Java接收方同步限制；来源不可截断。 */

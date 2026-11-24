@@ -7,9 +7,9 @@
     "node": ">=22.16.0 <23"
   },
   "scripts": {
-    "build": "pnpm --filter @code2knowledge/reverse-kernel build && pnpm --filter @c2k/contracts build && pnpm --filter @c2k/runtime build && pnpm --filter @c2k/web build",
-    "typecheck": "pnpm --filter @code2knowledge/reverse-kernel typecheck && pnpm --filter @c2k/contracts typecheck && pnpm --filter @c2k/runtime typecheck && pnpm --filter @c2k/web typecheck && tsc -p tsconfig.verification.json",
-    "test": "pnpm --filter @code2knowledge/reverse-kernel test && node --test verification/check-comments.test.mjs verification/process.test.mjs verification/kernel-packaging.test.mjs && pnpm --filter @c2k/contracts test && pnpm --filter @c2k/runtime test",
+    "build": "pnpm --filter @c2k/contracts build && pnpm --filter @c2k/runtime build && pnpm --filter @c2k/web build",
+    "typecheck": "pnpm --filter @c2k/contracts typecheck && pnpm --filter @c2k/runtime typecheck && pnpm --filter @c2k/web typecheck && tsc -p tsconfig.verification.json",
+    "test": "node --test verification/check-comments.test.mjs verification/process.test.mjs verification/kernel-packaging.test.mjs && pnpm --filter @c2k/contracts test && pnpm --filter @c2k/runtime test",
     "check:comments": "node verification/check-comments.mjs",
     "verify": "node verification/permissions-contract.mjs && node verification/platform-contract.mjs && node verification/health-contract.mjs && pnpm check:comments && pnpm build && pnpm typecheck && pnpm test",
     "test:e2e": "playwright test",
